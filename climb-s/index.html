@@ -13,17 +13,21 @@
          ============================================================ -->
     <script>
       window.SendMessageToJs = function () {};
+      // ⚠ SetIframeUrl 必须做成"本次 page-lifecycle 只生效一次"的。
+      //   客户端日志（691 个 page-loaded 周期）显示一个反馈环：
+      //     1) native 触发 page-loaded
+      //     2) native 注入桥接 + 调 SetIframeUrl(token URL)
+      //     3) 我们的 SendMessageToU3d("PageLoaded") + OnIframeLoad()
+      //        在 native 端被解读为「H5 又加载了一次」
+      //     4) native 再次触发 page-loaded → 回到 1)
+      //   只让第一次调用把"已就绪"信号送出去，第二次起直接 no-op，
+      //   外加 url !== location.href 兜底，循环就被截断。
+      var __setIframeUrlHandled = false;
       window.SetIframeUrl = function (url) {
+        if (__setIframeUrlHandled) return;
+        __setIframeUrlHandled = true;
         window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
         window.OnIframeLoad && window.OnIframeLoad();
-        // ⚠ 关键：只有目标 URL 跟当前不同才跳转。
-        // 客户端 WebView 在每次 page-loaded 后都会再调一遍 SetIframeUrl，
-        // 传过来的 url 是「当前页面 + token」。如果无条件 location.href = url：
-        //   1) 第一次：当前 ?iframe=0 → 跳到 ?iframe=0&token=... ✓
-        //   2) 跳完后新页面再次触发 page-loaded → 客户端又调 SetIframeUrl(同一 url)
-        //   3) 同一 url 再赋一次 location.href，浏览器还会再加载一次（或卡在 transition）
-        //   4) app.js 始终来不及跑完 init()，页面停在 index.html 的"骨架"上
-        // → 走法表 / 楼梯 / 关卡 chip / 小核桃位置全是 HTML 默认值。
         if (url && url !== location.href) {
           location.href = url;
         }
