@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>练习12 · 爬楼梯（交互操作）</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page" data-screen-label="01 Interactive Practice">
+      <!-- ========== TOP TAB BAR ========== -->
+      <header class="topbar">
+        <div class="tabgroup">
+          <button class="topbar-tab is-active" type="button">
+            <span class="topbar-pill">体验</span>
+            <span class="topbar-tab-title">练习12</span>
+          </button>
+          <button class="topbar-tab" type="button">
+            <span class="topbar-tab-title">提示</span>
+            <span class="topbar-badge">+1</span>
+          </button>
+        </div>
+
+        <button class="iconbtn" type="button" aria-label="设置">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+            <path d="M12 2.6 20.5 7v10L12 21.4 3.5 17V7z" />
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
+
+        <div class="topbar-spacer"></div>
+
+        <div class="topbar-divider"></div>
+
+        <button class="btn btn-ghost" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 11 21 3l-7 18-3-8-8-2z" />
+          </svg>
+          提交
+        </button>
+        <button class="btn btn-ghost" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+          </svg>
+          选关
+        </button>
+      </header>
+
+      <!-- ========== MAIN SPLIT ========== -->
+      <main class="split">
+        <!-- ========== LEFT: PROBLEM ========== -->
+        <section class="problem" aria-label="题目区">
+          <div class="problem-scroll" id="problemScroll">
+            <h2 class="sec-title">题目描述</h2>
+            <p>小码要爬一段共 <em>n</em> 级的台阶。每次他只能往上走以下两种步幅中的一种：</p>
+            <ol class="rules">
+              <li>向上走 <em>1</em> 级台阶</li>
+              <li>向上走 <em>2</em> 级台阶</li>
+            </ol>
+            <p>请帮助小码算一算，从地面到第 <em>n</em> 级台阶，一共有多少种不同的走法。</p>
+
+            <h2 class="sec-title">操作说明</h2>
+            <p>这是一道<strong>交互操作题</strong>，不需要编写代码。请在右侧的演示场景中亲手帮小码走台阶，发现走法的规律。</p>
+            <ol class="rules">
+              <li>右上角的 <em>1</em> <em>2</em> <em>3</em> <em>4</em> 按钮可切换关卡 <em>n</em>。</li>
+              <li>点击 <span class="kbd kbd-green">走一级 +1</span> 或 <span class="kbd kbd-orange">走两级 +2</span>，让小码走到终点。</li>
+              <li>把当前关卡的所有走法都点过一遍，<strong>走法记录表</strong>会自动填好。</li>
+              <li>点 <em>重置</em> 可以重玩本关；完成全部 4 关即过关。</li>
+            </ol>
+
+            <h2 class="sec-title">规律观察</h2>
+            <p>到达第 <em>n</em> 级台阶的最后一步，要么从 <em>n-1</em> 走 1 级上来，要么从 <em>n-2</em> 走 2 级上来。把右侧表格的 4 行数字连起来看一看，能不能找到一个加法规律？</p>
+
+            <h2 class="sec-title">完成目标</h2>
+            <p>把 4 个关卡的走法 <em>f(1)</em>、<em>f(2)</em>、<em>f(3)</em>、<em>f(4)</em> 全部填好，并尝试用一句话总结公式：</p>
+            <div class="formula-banner">
+              <span>f(n)</span>
+              <strong>=</strong>
+              <span class="blank-pill">　？　</span>
+              <strong>+</strong>
+              <span class="blank-pill">　？　</span>
+              <small>(n ≥ 3)</small>
+            </div>
+
+            <h2 class="sec-title">小贴士</h2>
+            <p>例如 <em>n=4</em> 时共有 5 种走法：<span class="ex">1+1+1+1</span>、<span class="ex">1+1+2</span>、<span class="ex">1+2+1</span>、<span class="ex">2+1+1</span>、<span class="ex">2+2</span>，所以 <em>f(4) = 5</em>。</p>
+          </div>
+
+          <!-- avatar -->
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 80 80" width="48" height="48">
+              <defs>
+                <clipPath id="avatarClip"><circle cx="40" cy="40" r="38" /></clipPath>
+              </defs>
+              <g clip-path="url(#avatarClip)">
+                <rect width="80" height="80" fill="#e8f1ff" />
+                <ellipse cx="40" cy="76" rx="36" ry="18" fill="#5b8def" />
+                <rect x="34" y="52" width="12" height="10" rx="3" fill="#f2c39a" />
+                <ellipse cx="40" cy="40" rx="20" ry="22" fill="#f6cda4" />
+                <path d="M22 36 C22 22 58 22 58 36 L58 30 C58 18 22 18 22 30 Z" fill="#3a2a1f" />
+                <path d="M22 36 L24 30 L28 34 L32 28 L36 33 L40 27 L44 33 L48 28 L52 33 L56 30 L58 36 Z" fill="#3a2a1f" />
+                <circle cx="32" cy="42" r="6" fill="white" stroke="#23344f" stroke-width="1.8" />
+                <circle cx="48" cy="42" r="6" fill="white" stroke="#23344f" stroke-width="1.8" />
+                <line x1="38" y1="42" x2="42" y2="42" stroke="#23344f" stroke-width="1.8" />
+                <circle cx="32" cy="42" r="2.2" fill="#23344f" />
+                <circle cx="48" cy="42" r="2.2" fill="#23344f" />
+                <path d="M34 52 Q40 56 46 52" fill="none" stroke="#7a4326" stroke-width="1.8" stroke-linecap="round" />
+                <circle cx="26" cy="48" r="2" fill="#ff9d9d" opacity="0.7" />
+                <circle cx="54" cy="48" r="2" fill="#ff9d9d" opacity="0.7" />
+              </g>
+              <circle cx="40" cy="40" r="38" fill="none" stroke="white" stroke-width="2.5" />
+            </svg>
+          </div>
+        </section>
+
+        <!-- ========== RIGHT: INTERACTIVE PLAYGROUND ========== -->
+        <section class="playground" aria-label="交互操作区">
+          <div class="playground-tabs">
+            <div class="ed-tab is-active">
+              <span class="ed-dot"></span>
+              交互演示
+            </div>
+            <div class="pg-meta">
+              <span id="progressLabel" class="pg-meta-text">学习进度：0/4</span>
+              <div class="pg-progress"><span id="progressFill"></span></div>
+            </div>
+          </div>
+
+          <div class="playground-body">
+            <!-- ===== INTERACTIVE STAGE ===== -->
+            <div class="stage-scene" id="stageScene">
+              <div class="sky-decor">
+                <span class="cloud cloud-a"></span>
+                <span class="cloud cloud-b"></span>
+                <span class="sun"></span>
+              </div>
+
+              <div class="speech" id="speechBubble">从地面开始，试试能不能到达终点。</div>
+
+              <div class="ground-line"></div>
+              <div class="ground-zero">0</div>
+
+              <div class="hero" id="hero" aria-label="小码同学">
+                <div class="hero-head"></div>
+                <div class="hero-body">码</div>
+                <div class="hero-shadow"></div>
+              </div>
+
+              <div class="stairs" id="stairs" aria-label="台阶示意图"></div>
+
+              <!-- level chips top-left -->
+              <div class="level-chips" id="levelButtons" aria-label="关卡选择"></div>
+
+              <!-- contribution card bottom-right -->
+              <div class="contribution" id="contributionCard">
+                <span class="contribution-tag">本步贡献</span>
+                <span class="contribution-path" id="contributionPath">先选择一种走法</span>
+                <strong class="contribution-value" id="contributionValue">走法 +?</strong>
+              </div>
+            </div>
+
+            <!-- ===== ACTION TOOLBAR ===== -->
+            <div class="action-bar">
+              <button class="step-btn action-button step-1" type="button" data-step="1">
+                <span class="step-num">+1</span>
+                <span class="step-label">走一级台阶</span>
+              </button>
+              <button class="step-btn action-button step-2" type="button" data-step="2">
+                <span class="step-num">+2</span>
+                <span class="step-label">走两级台阶</span>
+              </button>
+              <button class="reset-btn-lg" type="button" id="resetLevel">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 4 3 10 9 10" />
+                  <path d="M3.5 14a8 8 0 1 0 2-7.5L3 10" />
+                </svg>
+                重置
+              </button>
+            </div>
+
+            <!-- ===== RECORD TABLE ===== -->
+            <div class="record">
+              <div class="record-head">
+                <h3>走法记录表</h3>
+                <span class="record-hint" id="hintText">当前正在探索 n = 1 的走法。</span>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>台阶数 n</th>
+                    <th>走法 f(n)</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody id="recordRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- ========== BOTTOM TAB BAR ========== -->
+      <footer class="bottombar">
+        <div class="bottombar-left">
+          <button class="bb-tab is-active" type="button">题目说明</button>
+        </div>
+        <div class="bottombar-right">
+          <button class="bb-tab is-active" type="button">操作记录</button>
+          <button class="bb-expand" type="button">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 15 12 9 18 15" />
+            </svg>
+            展开
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ========== COMPLETION DIALOG ========== -->
+    <dialog id="resultDialog" class="result-dialog">
+      <h2 id="dialogTitle">有 1 种走法</h2>
+      <p id="dialogText">f(1) = 1，记录区已经更新。</p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="stayLevel">继续观察</button>
+        <button class="btn btn-primary" type="button" id="nextLevel">下一关</button>
+      </div>
+    </dialog>
+
+    <!-- legacy hidden hooks so app.js can resolve queries without errors -->
+    <div hidden aria-hidden="true">
+      <span id="missionText"></span>
+      <span id="traceLog"></span>
+      <span id="stepOneLabel"></span>
+      <span id="stepTwoLabel"></span>
+      <span id="soundToggle"><span class="sound-icon"></span></span>
+    </div>
+
+    <script src="./app.js"></script>
+    <script src="./illust-toggle.js"></script>
+  </body>
+</html>
