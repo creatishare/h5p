@@ -1,15 +1,19 @@
 // ============================================================
 // 客户端桥接 —— 不要修改 / 删除（详见 开发日志.md）
 // 客户端依赖 SetIframeUrl 才能打开 H5；删除会导致页面打不开。
+//
+// ⚠ 真正的"早定义"在 index.html <head> 的内联 <script> 里，这里是
+//    幂等兜底（同样的赋值再做一次，方便单独打开 app.js 调试时仍然有这些方法）。
+//    重复赋值无副作用 —— 不要因此把这里删掉。
 // ============================================================
-window.SendMessageToJs = function () {};
-window.SetIframeUrl = function (url) {
-  window.SendMessageToU3d("PageLoaded");
+window.SendMessageToJs = window.SendMessageToJs || function () {};
+window.SetIframeUrl = window.SetIframeUrl || function (url) {
+  window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
   window.OnIframeLoad && window.OnIframeLoad();
-  location.href = url;
+  if (url) location.href = url;
 };
-window.ShowClose = function () {};
-window.HideClose = function () {};
+window.ShowClose = window.ShowClose || function () {};
+window.HideClose = window.HideClose || function () {};
 
 // ============================================================
 // 课程数据（4 关）
@@ -119,7 +123,9 @@ const els = {
 };
 
 // 小核桃跳跃素材：tiao_00 是站姿（idle），tiao_02..tiao_14 是跳跃 13 帧（无 tiao_01）
-const HERO_BASE = "./小核桃跳跃/";
+// ⚠ 路径必须是 ASCII —— 客户端 WebView / 部分服务器对中文 URL 编解码不一致，
+//   会导致 setHeroSrc 里的 `getAttribute("src") !== src` 比较异常，第二次跳跃换不了帧。
+const HERO_BASE = "./hero-frames/";
 const HERO_IDLE = HERO_BASE + "tiao_00.png";
 // ⚠ 关键：跳跃数组**不含** tiao_00（idle）。
 //   含进去会让 t=0 的瞬间显示"站立不动"的姿势，与已经开始抬起的位置脱节。
