@@ -364,8 +364,12 @@ function renderLesson() {
 
   document.querySelectorAll(".action-button").forEach((button) => {
     const step = Number(button.dataset.step);
-    button.classList.toggle("done", selected.has(step));
-    button.dataset.disabled = lesson.disabledStepTwo && step === 2 ? "true" : "false";
+    const isDone = selected.has(step);
+    // 已模拟过的走法 → 视觉上置灰；点击逻辑在 handleStep 里另外 short-circuit
+    // 成"已经模拟过这种情况啦～"提示。
+    const isForbidden = lesson.disabledStepTwo && step === 2;
+    button.classList.toggle("done", isDone);
+    button.dataset.disabled = (isDone || isForbidden) ? "true" : "false";
   });
 
   renderStairs(n);
@@ -453,6 +457,15 @@ function handleStep(step) {
     safeSetText(els.contributionValue, "× 不能计数");
     els.contributionCard.classList.remove("is-hidden");
     els.contributionCard.classList.add("active");
+    return;
+  }
+
+  // 本关已经走过这种走法 → 不再重复模拟，只提示一下。
+  // renderLesson 里同步把这种按钮置为 data-disabled="true"，视觉上已经置灰。
+  const existing = state.selected.get(n);
+  if (existing && existing.has(step)) {
+    playSound("error");
+    safeSetText(els.speech, "已经模拟过这种情况啦～");
     return;
   }
 
