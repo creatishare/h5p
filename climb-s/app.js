@@ -7,15 +7,21 @@
 //    重复赋值无副作用 —— 不要因此把这里删掉。
 // ============================================================
 window.SendMessageToJs = window.SendMessageToJs || function () {};
-window.SetIframeUrl = window.SetIframeUrl || function (url) {
-  window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
-  window.OnIframeLoad && window.OnIframeLoad();
-  // ⚠ 只有目标 URL 跟当前不同才跳转，避免客户端反复 page-loaded → SetIframeUrl
-  //    的同 URL 死循环（详细解释见 index.html <head> 中的内联版本）。
-  if (url && url !== location.href) {
-    location.href = url;
-  }
-};
+// ⚠ 本次 page-lifecycle 只处理一次客户端的 SetIframeUrl 调用，避免
+//    SendMessageToU3d("PageLoaded") + OnIframeLoad() → native 反复 re-fire
+//    page-loaded → 再次 SetIframeUrl 的反馈环（见 index.html 中的解释）。
+if (!window.SetIframeUrl) {
+  var __setIframeUrlHandled = false;
+  window.SetIframeUrl = function (url) {
+    if (__setIframeUrlHandled) return;
+    __setIframeUrlHandled = true;
+    window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
+    window.OnIframeLoad && window.OnIframeLoad();
+    if (url && url !== location.href) {
+      location.href = url;
+    }
+  };
+}
 window.ShowClose = window.ShowClose || function () {};
 window.HideClose = window.HideClose || function () {};
 
