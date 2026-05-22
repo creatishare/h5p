@@ -229,11 +229,22 @@ function jumpTo(x1, y1, x2, y2) {
   heroJumpRaf = requestAnimationFrame(frame);
 }
 
-// 预加载所有帧，避免首次播放时还在拉资源造成卡顿
+// 预加载所有帧，避免播放时还在拉资源造成卡顿。
+// ⚠ 必须把 Image 对象的引用挂在模块作用域里，否则浏览器在 forEach 结束后会回收它们。
+//   生产服务器（47.85.84.164:8088）不设 Cache-Control / Expires，只发 ETag —— 没有
+//   in-memory 引用的话，第二次跳跃时每帧都要重新发请求 / 走 304，16ms 一帧的 RAF 节奏
+//   下根本来不及，新 src 会在旧 src 还没解码完就被覆盖，结果：位置在动，但 <img> 一直
+//   卡在第一次落地时的 tiao_00。decode() 进一步强制浏览器把帧解码进 in-memory image
+//   cache，后续 setAttribute 命中即用。
+const __heroFrameCache = [];
 function preloadHeroFrames() {
-  HERO_JUMP_FRAMES.forEach((src) => {
+  [HERO_IDLE, ...HERO_JUMP_FRAMES].forEach((src) => {
     const img = new Image();
     img.src = src;
+    if (typeof img.decode === "function") {
+      img.decode().catch(() => {});
+    }
+    __heroFrameCache.push(img);
   });
 }
 
