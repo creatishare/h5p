@@ -698,6 +698,20 @@ h1, h2, h3, p { margin: 0; }
   background: #fafbfd;
 }
 
+/* 动画播放期间锁定所有交互。JS 的 state._animating 守卫已经从源头拒绝点击，
+   这里再加一层视觉 + pointer-events 屏蔽，让小朋友看到按钮"暂时不可用"。
+   关卡 chip / 重置 / 走 X 级 / 顶栏「提示」全部 dim & 拦截。 */
+body.is-animating .step-btn,
+body.is-animating .reset-btn-lg,
+body.is-animating .level-button,
+body.is-animating .topbar-tab,
+body.is-animating .btn {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: wait;
+  transition: opacity 160ms ease;
+}
+
 .step-btn {
   display: inline-flex;
   align-items: center;

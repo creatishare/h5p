@@ -93,7 +93,18 @@ const state = {
   // 小核桃当前所在的像素位置（jumpTo 用作起点）
   _heroX: null,
   _heroY: null,
+  // 动画播放期间锁定输入。详见 setAnimating()。
+  _animating: false,
 };
+
+// 动画期间禁用所有交互（"走一级"/"走两级"/重置/关卡切换），避免出现
+// 旧动画的 setTimeout（animatePath 里的 placeHero，handleStep 末尾的 renderLesson）
+// 还在 pending 时新点击又起一轮 —— 老的回调到点会落到新动画的中间，把小核桃
+// 瞬移到错误位置 / 把 state 改坏。body.is-animating 同时给按钮加视觉反馈。
+function setAnimating(on) {
+  state._animating = on;
+  document.body.classList.toggle("is-animating", on);
+}
 
 function isUnlocked(level) {
   return level <= state.maxUnlocked;
@@ -377,6 +388,7 @@ function bindEvents() {
   });
 
   els.levelButtons.addEventListener("click", (event) => {
+    if (state._animating) return; // 动画期间不允许切关，避免老的 setTimeout 落到新关卡上
     const button = event.target.closest("[data-level]");
     if (!button) return;
     const lvl = Number(button.dataset.level);
@@ -386,6 +398,7 @@ function bindEvents() {
   });
 
   els.resetLevel.addEventListener("click", () => {
+    if (state._animating) return; // 动画期间不允许重置；点击会被 body.is-animating 的 CSS 屏蔽
     state.selected.set(state.currentLevel, new Set());
     state.solved.delete(state.currentLevel);
     state.lastTrace.delete(state.currentLevel);
@@ -426,6 +439,10 @@ function bindEvents() {
 }
 
 function handleStep(step) {
+  // 动画进行中拒绝新点击，避免 placeHero / renderLesson 的旧 setTimeout
+  // 还在 pending 时新一轮已经启动 → 老回调落到新动画里把状态搅乱。
+  if (state._animating) return;
+
   const n = state.currentLevel;
   const lesson = lessons[n];
   if (lesson.disabledStepTwo && step === 2) {
@@ -443,6 +460,7 @@ function handleStep(step) {
   state.lastTrace.set(n, trace);
   const start = n < 3 ? 0 : n - step;
   const path = n === 2 && step === 1 ? [0, 1, 2] : [start, n];
+  setAnimating(true);
   animatePath(path, n);
   playPathSound(path);
 
@@ -458,6 +476,7 @@ function handleStep(step) {
   setTimeout(() => {
     renderLesson();
     showContribution(trace);
+    setAnimating(false);
     if (lesson.required.every((item) => selected.has(item))) {
       completeLevel(n);
     }
