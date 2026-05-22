@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>爬楼梯</title>
+    <!-- ============================================================
+         客户端桥接 —— 必须在 <head> 内联，确保比客户端注入的桥接调用更早就位。
+         客户端 WebView 在 page-loaded 事件后会立即调用 window.SetIframeUrl(...)，
+         如果这时桥接函数还在 body 末尾的 app.js 里没执行，就会抛
+         `TypeError: window.SetIframeUrl is not a function`，页面进入 retry/timeout。
+         app.js 顶部也保留同样的赋值（幂等，互不影响）。详见 开发日志.md。
+         ============================================================ -->
+    <script>
+      window.SendMessageToJs = function () {};
+      window.SetIframeUrl = function (url) {
+        window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
+        window.OnIframeLoad && window.OnIframeLoad();
+        if (url) location.href = url;
+      };
+      window.ShowClose = function () {};
+      window.HideClose = function () {};
+    </script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -95,7 +112,7 @@
               <div class="ground-zero">0</div>
 
               <div class="hero" id="hero" aria-label="小核桃同学">
-                <img class="hero-img" id="heroImg" src="./小核桃跳跃/tiao_00.png" alt="" draggable="false" />
+                <img class="hero-img" id="heroImg" src="./hero-frames/tiao_00.png" alt="" draggable="false" />
                 <div class="hero-shadow"></div>
               </div>
 
