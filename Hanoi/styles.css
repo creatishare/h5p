@@ -1,0 +1,972 @@
+/* ============================================================
+   练习 · 汉诺塔 — 交互操作题
+   设计令牌与 climb-s 保持一致（同套品牌色 + 同套圆角 + 同套阴影）
+   注意：所有图标走 inline SVG（fill / stroke = currentColor），
+        不再使用 CSS mask-image —— 客户端 WebView 不兼容。
+   ============================================================ */
+
+:root {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --ink: #1f2a3a;
+  --ink-soft: #2c394e;
+  --muted: #8995a8;
+  --line: #eaeef3;
+  --line-strong: #d8dee7;
+
+  --blue: #3b86ff;
+  --blue-deep: #1f6dec;
+  --blue-soft: #e6f1ff;
+  --cyan-pill-bg: #c4ecff;
+  --cyan-pill-ink: #1a7fc0;
+  --red: #e8483b;
+  --orange: #ff7a45;
+  --green: #18a06d;
+  --yellow: #ffd24a;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+
+  --shadow-soft: 0 2px 6px rgba(20, 35, 60, 0.04);
+  --shadow-card: 0 8px 28px rgba(28, 50, 84, 0.08);
+  --shadow-blue: 0 6px 16px rgba(59, 134, 255, 0.25);
+
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Inter, system-ui, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: #f3f6fa;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+button { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
+
+/* ============================================================
+   PAGE LAYOUT
+   ============================================================ */
+
+.page {
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  background: white;
+}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 0 0;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  position: relative;
+  z-index: 5;
+}
+
+.tabgroup {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.topbar-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 26px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 15px;
+  position: relative;
+}
+.topbar-tab.is-active { color: var(--ink); }
+.topbar-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--blue);
+}
+
+.topbar-pill {
+  display: inline-grid;
+  place-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--cyan-pill-bg);
+  color: var(--cyan-pill-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.topbar-tab-title { font-weight: 600; font-size: 16px; }
+
+.topbar-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ff6a3d;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.iconbtn {
+  width: 34px; height: 34px;
+  display: inline-grid; place-items: center;
+  border: 0; background: transparent;
+  border-radius: 8px; cursor: pointer;
+  color: #8c98ab;
+  transition: background 140ms ease, color 140ms ease;
+}
+.iconbtn:hover { background: #f4f6fa; color: var(--ink); }
+.iconbtn[aria-pressed="false"] { color: #c2c9d4; }
+
+.topbar-spacer { flex: 1; }
+.topbar-divider { width: 1px; height: 22px; background: var(--line); margin: 0 6px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.btn-ghost { color: var(--ink); }
+.btn-ghost:hover { background: #f3f6fa; }
+.btn-ghost svg { color: #6d7a8d; }
+
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+  box-shadow: var(--shadow-blue);
+}
+.btn-primary:hover { background: var(--blue-deep); border-color: var(--blue-deep); }
+
+/* ============================================================
+   MAIN SPLIT
+   ============================================================ */
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 0;
+  position: relative;
+}
+
+/* ============================================================
+   PLAYGROUND
+   ============================================================ */
+
+.playground {
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  min-height: 0;
+  background: white;
+  position: relative;
+}
+
+.playground-tabs {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  gap: 18px;
+}
+
+.ed-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 14px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  position: relative;
+}
+.ed-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--blue);
+}
+.ed-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+/* 左右栏：操作记录（窄）| 演示舞台（宽） */
+.playground-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(560px, 2.6fr);
+  grid-template-areas: "record main";
+  min-height: 0;
+  overflow: hidden;
+}
+.playground-body > .record { grid-area: record; }
+.playground-body > .play-main { grid-area: main; }
+
+.play-main {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ============================================================
+   STAGE SCENE
+   ============================================================ */
+
+.stage-scene {
+  position: relative;
+  min-height: 360px;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #c8e9ff 0%, #d8eeff 55%, #eaf6ff 100%);
+}
+
+.sky-decor { position: absolute; inset: 0; pointer-events: none; }
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+.cloud-a {
+  top: 22px; left: 8%;
+  width: 60px; height: 18px;
+  box-shadow: 18px -6px 0 -2px white, 36px 2px 0 -2px white;
+}
+.cloud-b {
+  top: 58px; right: 18%;
+  width: 46px; height: 14px;
+  box-shadow: 16px -4px 0 -2px white, 30px 4px 0 -3px white;
+}
+.sun {
+  position: absolute;
+  top: 26px;
+  right: 6%;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff5b0, #ffd24a 60%, #ffae3c);
+  box-shadow: 0 0 22px rgba(255, 210, 74, 0.55);
+}
+
+.speech {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 380px;
+  min-width: 160px;
+  padding: 8px 16px;
+  border: 1.5px solid #7fb8f0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1d4f87;
+  text-align: center;
+  z-index: 4;
+  box-shadow: 0 4px 12px rgba(40, 90, 160, 0.12);
+  line-height: 1.4;
+}
+.speech.is-ok  { border-color: #6cd9b6; color: #086049; background: rgba(214, 246, 236, 0.92); }
+.speech.is-err { border-color: #f4a8a8; color: #a02222; background: rgba(255, 232, 232, 0.92); }
+.speech.is-tip { border-color: #ffc06a; color: #834200; background: rgba(255, 246, 220, 0.94); }
+
+/* ============================================================
+   TOWERS & DISKS
+   ============================================================ */
+
+.towers-row {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 30px;
+  top: 90px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0;
+}
+
+.tower-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  max-width: 260px;
+  height: 100%;
+}
+
+.peg-zone {
+  width: 100%;
+  flex: 1;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  padding-bottom: 8px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+.peg-zone:hover { background: rgba(90, 134, 255, 0.05); }
+.peg-zone.selected-hint { background: rgba(90, 134, 255, 0.08); }
+.peg-zone.drag-over {
+  background: rgba(90, 134, 255, 0.13) !important;
+  outline: 2px dashed rgba(59, 134, 255, 0.5);
+  outline-offset: -4px;
+}
+
+.peg-rod {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  top: 8px;
+  background: linear-gradient(180deg, #8aa3bd 0%, #6b87a3 100%);
+  border-radius: 4px;
+  z-index: 0;
+  box-shadow: inset -1px 0 1px rgba(255,255,255,0.3);
+}
+.peg-base {
+  position: absolute;
+  bottom: 0;
+  left: 4%;
+  right: 4%;
+  height: 10px;
+  background: linear-gradient(180deg, #b8c5d4 0%, #8a9bb0 100%);
+  border-radius: 4px;
+  z-index: 1;
+  box-shadow: 0 2px 0 rgba(40, 60, 90, 0.15);
+}
+
+.peg-label {
+  position: relative;
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #2c4866;
+  letter-spacing: 1px;
+  font-family: "Times New Roman", serif;
+}
+
+/* disks 容器：column-reverse 从下往上堆叠 */
+.disks-wrap {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.disk {
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  font-family: "Times New Roman", "PingFang SC", serif;
+  position: relative;
+  z-index: 2;
+  user-select: none;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(28, 50, 84, 0.12),
+              inset 0 -3px 6px rgba(0, 0, 0, 0.12),
+              inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: transform 140ms ease, filter 140ms ease, opacity 140ms ease;
+}
+/* 顶层盘子可点 / 可拖 —— pointer-events 单独打开 */
+.disk.is-top {
+  pointer-events: auto;
+  cursor: grab;
+}
+.disk.is-top:hover { filter: brightness(1.08); }
+.disk.is-top:active { cursor: grabbing; }
+.disk.lifted {
+  transform: translateY(-18px);
+  filter: drop-shadow(0 8px 16px rgba(28, 50, 84, 0.22)) brightness(1.08);
+}
+.disk.dragging { opacity: 0.2; transform: none !important; filter: none !important; }
+.disk.just-landed {
+  animation: disk-land 280ms ease-out;
+}
+@keyframes disk-land {
+  0%   { transform: scaleY(1.08) scaleX(0.94); }
+  40%  { transform: scaleY(0.92) scaleX(1.05); }
+  100% { transform: scaleY(1) scaleX(1); }
+}
+
+/* 关卡 chip（左上角） —— 与 climb-s 同源 */
+.level-chips {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 6;
+}
+.level-button {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid #b9cde4;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d4f87;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: "Times New Roman", serif;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.level-button:hover { transform: translateY(-1px); }
+.level-button.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: white;
+}
+.level-button.done {
+  background: #1aa86e;
+  border-color: #1aa86e;
+  color: white;
+}
+.level-button.locked {
+  background: #eef1f5;
+  border-color: #d8dee7;
+  color: #b0b8c5;
+  cursor: not-allowed;
+}
+.level-button.locked:hover { transform: none; }
+
+/* 飞行盘子 —— 用于"点击-放置"动画（absolute 在 stage-scene 坐标系内） */
+.flying-disk {
+  position: absolute;
+  border-radius: 999px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  font-family: "Times New Roman", "PingFang SC", serif;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(28, 50, 84, 0.22),
+              inset 0 -3px 6px rgba(0, 0, 0, 0.12),
+              inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 30;
+  will-change: left, bottom, width;
+}
+.flying-disk.is-flying { display: flex; }
+
+/* 拖动用的"幽灵盘子"—— position:fixed，跟随光标 */
+#dragGhost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 999px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  font-family: "Times New Roman", "PingFang SC", serif;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 26px rgba(28, 50, 84, 0.26),
+              inset 0 -3px 6px rgba(0, 0, 0, 0.12),
+              inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transform: translate(-50%, -50%) scale(1.04);
+}
+#dragGhost.is-active { display: flex; }
+
+/* ============================================================
+   ACTION BAR：左侧状态文字 + 右侧"重置本关"按钮
+   ============================================================ */
+
+.action-bar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--line);
+  background: #fafbfd;
+}
+
+.action-status {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: "PingFang SC", sans-serif;
+  letter-spacing: 0.2px;
+}
+.action-status strong {
+  color: var(--blue-deep);
+  font-weight: 700;
+  font-family: "Times New Roman", serif;
+  font-size: 1.06em;
+  padding: 0 2px;
+}
+
+/* 动画播放期间锁定所有交互（climb-s 同源约束） */
+body.is-animating .peg-zone,
+body.is-animating .reset-btn-lg,
+body.is-animating .topbar-tab,
+body.is-animating .btn,
+body.is-animating .level-button {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: wait;
+  transition: opacity 160ms ease;
+}
+
+.reset-btn-lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 26px;
+  border-radius: 14px;
+  border: 2px solid var(--line-strong);
+  background: white;
+  color: #5a6a82;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+.reset-btn-lg:hover { color: var(--blue); border-color: #9ec1ee; background: #f4f8ff; }
+
+/* ============================================================
+   RECORD (目标 + 规则 + 步数 + 操作记录)
+   ============================================================ */
+
+.record {
+  padding: 16px 18px;
+  border-right: 1px solid var(--line);
+  background: white;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* —— 目标 & 规则 卡片 —— */
+.goals-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 13px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f5fbff, #eaf3ff);
+  border: 1px solid #cdddef;
+}
+.gr-section { display: flex; flex-direction: column; gap: 4px; }
+.gr-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--cyan-pill-ink);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.gr-goal p {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.5;
+  font-family: "PingFang SC", sans-serif;
+}
+.gr-goal p strong {
+  color: var(--blue-deep);
+  font-weight: 800;
+  font-family: "Times New Roman", serif;
+  font-size: 1.12em;
+  padding: 0 2px;
+}
+.gr-goal p em {
+  font-style: normal;
+  font-family: "Times New Roman", serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+.gr-rules ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.75;
+  font-family: "PingFang SC", sans-serif;
+}
+.gr-rules ol li { padding: 1px 0; }
+.gr-rules ol li::marker {
+  font-weight: 700;
+  color: var(--cyan-pill-ink);
+  font-family: "Times New Roman", serif;
+}
+
+/* —— 步数 / 最少步数 双卡 —— */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-card {
+  background: #f6f7fb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+  border: 1px solid var(--line);
+}
+.stat-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: "Times New Roman", serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.stat-val.purple { color: var(--blue-deep); }
+.stat-lbl {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: "PingFang SC", sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* —— 操作记录 标题 —— */
+.record-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.record-head h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.record-hint {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  padding-right: 2px;
+}
+.log-area::-webkit-scrollbar { width: 6px; }
+.log-area::-webkit-scrollbar-thumb { background: #dde3ec; border-radius: 3px; }
+.log-area::-webkit-scrollbar-track { background: transparent; }
+
+.log-empty {
+  font-size: 12px;
+  color: #b0b8c5;
+  padding: 8px 6px;
+}
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #f6f8fb;
+  font-size: 12.5px;
+  border: 1px solid transparent;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.log-row.is-latest {
+  background: #eef5ff;
+  border-color: #cdddef;
+}
+.log-num {
+  color: #9ca6b6;
+  min-width: 28px;
+  font-weight: 700;
+  font-family: "Times New Roman", serif;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.log-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: "Times New Roman", serif;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+.log-txt {
+  color: var(--ink-soft);
+  flex: 1;
+  font-family: "PingFang SC", sans-serif;
+}
+.log-txt b {
+  color: var(--ink);
+  font-weight: 800;
+  font-family: "Times New Roman", serif;
+}
+
+/* ============================================================
+   WIN OVERLAY (在 stage-scene 内部铺满)
+   ============================================================ */
+
+.win-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(246, 247, 251, 0.94);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 60;
+  backdrop-filter: blur(2px);
+}
+.win-overlay.show { display: flex; }
+.win-icon { font-size: 48px; }
+.win-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+}
+.win-sub { font-size: 13px; color: var(--muted); }
+.win-stats-row { display: flex; gap: 28px; margin-top: 6px; }
+.win-stat { text-align: center; }
+.win-stat-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--blue-deep);
+  font-family: "Times New Roman", serif;
+  font-variant-numeric: tabular-nums;
+}
+.win-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.win-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.win-actions .btn {
+  height: 40px;
+  padding: 0 22px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.win-actions .btn-ghost {
+  border: 1.5px solid var(--line-strong);
+  background: white;
+}
+.win-actions .btn-ghost:hover { background: #f3f6fa; }
+
+/* ============================================================
+   HINTS DIALOG
+   ============================================================ */
+
+dialog.hints-dialog {
+  border: 0;
+  border-radius: 16px;
+  padding: 0;
+  width: min(560px, calc(100vw - 40px));
+  max-height: 86vh;
+  font-family: inherit;
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  background: white;
+}
+dialog.hints-dialog::backdrop { background: rgba(22, 32, 51, 0.4); }
+
+.hints-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #f5fbff, #eaf3ff);
+}
+.hints-head h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.5px;
+}
+.hints-close {
+  width: 32px; height: 32px;
+  display: inline-grid; place-items: center;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.hints-close:hover { background: #e3ecf6; color: var(--ink); }
+
+.hints-steps {
+  margin: 0;
+  padding: 4px 22px 8px;
+  list-style: none;
+  max-height: 58vh;
+  overflow-y: auto;
+}
+.hints-step {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.hints-step:last-child { border-bottom: 0; }
+
+.hints-illust {
+  width: 110px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  background: #f4f8fd;
+  border-radius: 12px;
+  border: 1px solid #e2eaf3;
+}
+/* 新配图统一走纯 SVG，没有特殊布局变体 */
+
+.hints-text h3 {
+  margin: 0 0 6px;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hints-text p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  line-height: 1.75;
+}
+.hints-text em {
+  font-style: normal;
+  font-family: "Times New Roman", "Cambria", serif;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 1.04em;
+}
+.hints-text strong { color: var(--ink); font-weight: 700; }
+
+/* 动态 n−1 数字 —— 在标题里走 <strong>，在正文里走 <em>，
+   两种语义都套上 .hint-n1，统一显眼一点 */
+.hints-text .hint-n1 {
+  color: var(--blue-deep);
+  font-family: "Times New Roman", "Cambria", serif;
+  font-weight: 800;
+  font-size: 1.08em;
+  padding: 0 2px;
+}
+
+.hints-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--line);
+  background: #fafbfd;
+}
+.hints-actions .btn-primary {
+  height: 36px;
+  padding: 0 22px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  .playground-body {
+    grid-template-columns: 1fr;
+    grid-template-areas: "main" "record";
+    grid-template-rows: 1fr auto;
+  }
+  .record {
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    max-height: 50vh;
+  }
+}
+
+@media (max-width: 900px) {
+  .action-bar { flex-wrap: wrap; }
+}
+
+@media (max-width: 540px) {
+  .hints-step { grid-template-columns: 84px 1fr; gap: 12px; }
+  .hints-illust { width: 84px; height: 68px; }
+  .hints-head h2 { font-size: 17px; }
+  .topbar-tab-title { font-size: 14px; }
+}

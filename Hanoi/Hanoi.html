@@ -1,771 +1,326 @@
-<!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/admin/Downloads/hanoi_5.html -->
-<html lang="zh"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<title>汉诺塔</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
-
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden}
-
-body{
-  background:#f0f2f5;
-  font-family:'Noto Sans SC','Nunito',sans-serif;
-  display:flex;align-items:center;justify-content:center;
-}
-
-#app{
-  width:100vw;height:100vh;
-  max-width:calc(100vh * 16/9);
-  background:#fff;
-  display:grid;
-  grid-template-rows:56px 1fr;
-  grid-template-columns:1fr 240px;
-  border-radius:0;
-  overflow:hidden;
-  box-shadow:0 4px 40px rgba(0,0,0,0.10);
-}
-
-/* header */
-header{
-  grid-column:1/3;
-  background:#fff;
-  border-bottom:1.5px solid #eef0f4;
-  display:flex;align-items:center;
-  padding:0 28px;gap:12px;
-}
-.hlogo{
-  width:30px;height:30px;border-radius:8px;
-  background:linear-gradient(135deg,#6a7cf8,#9b59f5);
-  display:flex;align-items:center;justify-content:center;
-  font-size:15px;font-weight:700;color:#fff;flex-shrink:0;
-}
-.htitle{font-size:17px;font-weight:700;color:#1a1d2e;letter-spacing:-0.2px}
-.hsub{font-size:12px;color:#9ea3b5;margin-left:4px}
-.hbadge{
-  margin-left:auto;display:flex;gap:8px;
-}
-.badge{
-  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
-}
-.badge-blue{background:#eef1ff;color:#5469f7}
-.badge-green{background:#eafaf2;color:#27ae78}
-.badge-red{background:#fff0f0;color:#e05252}
-
-/* game area */
-#game-area{
-  background:#f6f7fb;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  padding:0 12px 16px;
-  position:relative;
-  overflow:hidden;
-}
-
-.towers-row{
-  display:flex;width:100%;align-items:flex-end;
-  justify-content:space-around;
-  flex:1;padding-bottom:16px;
-}
-
-.tower-col{
-  display:flex;flex-direction:column;align-items:center;
-  position:relative;flex:1;height:100%;
-}
-
-.peg-label{
-  font-size:13px;font-weight:700;color:#9ea3b5;
-  letter-spacing:1px;margin-top:10px;
-}
-
-.peg-zone{
-  width:100%;flex:1;
-  display:flex;flex-direction:column-reverse;align-items:center;
-  position:relative;cursor:pointer;
-  border-radius:12px;
-  transition:background 0.15s;
-  padding-bottom:6px;
-}
-.peg-zone:hover{background:rgba(90,100,250,0.04)}
-.peg-zone.can-drop{background:rgba(90,100,250,0.08)}
-.peg-zone.selected-hint{background:rgba(90,100,250,0.06)}
-
-.peg-rod{
-  position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-  width:7px;background:#cdd0de;border-radius:4px;
-  top:0;z-index:0;
-}
-.peg-base{
-  position:absolute;bottom:0;left:8%;right:8%;
-  height:7px;background:#cdd0de;border-radius:4px;z-index:1;
-}
-
-.disks-wrap{
-  position:absolute;bottom:7px;
-  width:90%;display:flex;flex-direction:column-reverse;
-  align-items:center;gap:3px;z-index:2;
-}
-
-.disk{
-  height:30px;border-radius:30px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#fff;
-  transition:transform 0.14s,filter 0.14s,opacity 0.14s;
-  cursor:default;position:relative;z-index:2;
-  user-select:none;
-}
-.disk.is-top{cursor:grab;}
-.disk.is-top:hover{filter:brightness(1.08);}
-.disk.lifted{
-  transform:translateY(-22px);
-  filter:drop-shadow(0 6px 16px rgba(0,0,0,0.18)) brightness(1.1);
-}
-.disk.faded{opacity:0.35;}
-.disk.dragging{opacity:0.25;transform:none!important;filter:none!important;}
-
-/* floating ghost disk that follows the cursor */
-#drag-ghost{
-  position:fixed;pointer-events:none;z-index:9999;
-  height:30px;border-radius:30px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#fff;
-  box-shadow:0 8px 28px rgba(0,0,0,0.22);
-  transform:translate(-50%,-50%) scale(1.06);
-  transition:none;display:none;
-}
-.peg-zone.drag-over{
-  background:rgba(90,100,250,0.13)!important;
-  border:2px dashed rgba(90,100,250,0.45);
-}
-
-/* progress bottom */
-.progress-row{
-  width:90%;max-width:480px;
-  display:flex;align-items:center;gap:10px;
-  margin-top:4px;
-}
-.progress-track{
-  flex:1;height:5px;background:#e2e4ec;border-radius:3px;overflow:hidden;
-}
-.progress-fill{
-  height:100%;border-radius:3px;
-  background:linear-gradient(90deg,#6a7cf8,#9b59f5);
-  transition:width 0.3s;
-}
-.progress-label{font-size:11px;color:#b0b5c8;white-space:nowrap}
-
-/* sidebar */
-#sidebar{
-  background:#fff;
-  border-left:1.5px solid #eef0f4;
-  padding:20px 16px;
-  display:flex;flex-direction:column;gap:18px;
-  overflow-y:auto;
-}
-
-.sec-label{
-  font-size:10px;font-weight:700;color:#c0c4d6;
-  letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;
-}
-
-/* form elements */
-.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
-.field label{font-size:12px;color:#6b7082}
-
-select{
-  background:#f6f7fb;border:1.5px solid #e2e4ec;
-  border-radius:8px;color:#1a1d2e;
-  font-family:'Noto Sans SC',sans-serif;font-size:13px;
-  padding:8px 10px;width:100%;cursor:pointer;outline:none;
-  appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center;
-}
-select:focus{border-color:#6a7cf8}
-
-.speed-row{display:flex;align-items:center;gap:8px}
-.speed-row span{font-size:11px;color:#b0b5c8;white-space:nowrap}
-.speed-val{font-size:12px;font-weight:600;color:#6a7cf8;min-width:40px;text-align:right}
-input[type=range]{
-  flex:1;-webkit-appearance:none;background:transparent;height:20px;cursor:pointer;
-}
-input[type=range]::-webkit-slider-track{
-  height:4px;background:#e2e4ec;border-radius:2px;
-}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
-  background:#6a7cf8;margin-top:-6px;cursor:pointer;
-  box-shadow:0 0 0 3px rgba(106,124,248,0.18);
-}
-
-/* mode tabs */
-.mode-tabs{display:flex;background:#f6f7fb;border-radius:8px;padding:3px;gap:2px}
-.mode-tab{
-  flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;
-  border-radius:6px;cursor:pointer;color:#9ea3b5;transition:all 0.15s;user-select:none;
-}
-.mode-tab.active{background:#fff;color:#5469f7;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
-
-/* buttons */
-.btn{
-  width:100%;padding:10px 14px;border-radius:10px;
-  border:none;cursor:pointer;
-  font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:600;
-  transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;
-  letter-spacing:0.2px;
-}
-.btn-start{background:linear-gradient(135deg,#6a7cf8,#9b59f5);color:#fff}
-.btn-start:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.btn-hint{background:#27ae78;color:#fff}
-.btn-hint:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.btn-reset{background:#f6f7fb;color:#6b7082;border:1.5px solid #e2e4ec}
-.btn-reset:hover{background:#eef0f4}
-.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none}
-
-/* stats */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.stat-card{
-  background:#f6f7fb;border-radius:10px;padding:10px;text-align:center;
-}
-.stat-val{font-size:22px;font-weight:700;color:#1a1d2e;font-variant-numeric:tabular-nums}
-.stat-val.purple{color:#6a7cf8}
-.stat-lbl{font-size:10px;color:#b0b5c8;margin-top:2px}
-
-/* hint box */
-.hint-box{
-  background:#f6f7fb;border:1.5px solid #e2e4ec;
-  border-radius:10px;padding:10px 12px;
-  font-size:12px;color:#9ea3b5;line-height:1.6;min-height:48px;
-}
-.hint-box.ok{border-color:#27ae78;color:#27ae78;background:#eafaf2}
-.hint-box.err{border-color:#e05252;color:#e05252;background:#fff0f0}
-.hint-box.tip{border-color:#f59e0b;color:#b97a00;background:#fffbeb}
-
-/* log */
-.log-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;min-height:0}
-.log-row{
-  display:flex;align-items:center;gap:7px;
-  padding:5px 8px;border-radius:7px;
-  background:#f6f7fb;font-size:11px;
-}
-.log-num{color:#c0c4d6;min-width:22px;font-weight:600}
-.log-chip{
-  width:18px;height:18px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:700;color:#fff;flex-shrink:0;
-}
-.log-txt{color:#6b7082;flex:1}
-.log-txt b{color:#1a1d2e}
-
-/* win overlay */
-.win-overlay{
-  position:absolute;inset:0;
-  background:rgba(246,247,251,0.94);
-  display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;z-index:60;border-radius:0;
-}
-.win-overlay.show{display:flex}
-.win-icon{font-size:48px}
-.win-title{font-size:26px;font-weight:700;color:#1a1d2e;letter-spacing:-0.5px}
-.win-sub{font-size:13px;color:#9ea3b5}
-.win-stats-row{display:flex;gap:20px}
-.win-stat{text-align:center}
-.win-stat-val{font-size:24px;font-weight:700;color:#6a7cf8}
-.win-stat-lbl{font-size:11px;color:#b0b5c8;margin-top:2px}
-.btn-win{width:160px;padding:11px 0;background:linear-gradient(135deg,#6a7cf8,#9b59f5);color:#fff;border:none;border-radius:10px;font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
-.btn-win:hover{filter:brightness(1.08)}
-
-.divider{height:1px;background:#eef0f4}
-</style>
-</head>
-<body>
-<div id="app">
-
-  <!-- header -->
-  <header>
-    <div class="hlogo">塔</div>
-    <div>
-      <div class="htitle">汉诺塔</div>
-    </div>
-    <span class="hsub">Tower of Hanoi</span>
-    <div class="hbadge">
-      <span class="badge badge-blue" id="hdrSteps">步数：0</span>
-      <span class="badge badge-green" id="hdrMin">最少：127</span>
-    </div>
-  </header>
-
-  <!-- game -->
-  <div id="game-area">
-    <div class="towers-row" id="towersRow">
-      <div class="tower-col">
-        <div class="peg-zone" id="peg-A" data-peg="A">
-          <div class="peg-rod"></div>
-          <div class="peg-base"></div>
-          <div class="disks-wrap" id="disks-A"><div class="disk" style="width: 88%; background: rgb(253, 203, 110); color: rgb(255, 255, 255);">7</div><div class="disk" style="width: 78%; background: rgb(162, 155, 254); color: rgb(255, 255, 255);">6</div><div class="disk" style="width: 68%; background: rgb(253, 121, 168); color: rgb(255, 255, 255);">5</div><div class="disk" style="width: 58%; background: rgb(255, 234, 167); color: rgb(255, 255, 255);">4</div><div class="disk" style="width: 48%; background: rgb(150, 206, 180); color: rgb(255, 255, 255);">3</div><div class="disk" style="width: 38%; background: rgb(69, 183, 209); color: rgb(255, 255, 255);">2</div><div class="disk is-top" style="width: 28%; background: rgb(78, 205, 196); color: rgb(255, 255, 255);">1</div></div>
-        </div>
-        <div class="peg-label">A</div>
-      </div>
-      <div class="tower-col">
-        <div class="peg-zone" id="peg-B" data-peg="B">
-          <div class="peg-rod"></div>
-          <div class="peg-base"></div>
-          <div class="disks-wrap" id="disks-B"></div>
-        </div>
-        <div class="peg-label">B</div>
-      </div>
-      <div class="tower-col">
-        <div class="peg-zone" id="peg-C" data-peg="C">
-          <div class="peg-rod"></div>
-          <div class="peg-base"></div>
-          <div class="disks-wrap" id="disks-C"></div>
-        </div>
-        <div class="peg-label">C</div>
-      </div>
-    </div>
-
-    <div class="progress-row" id="progressRow" style="display:none">
-      <span class="progress-label" id="progLabel">0 / 0</span>
-      <div class="progress-track">
-        <div class="progress-fill" id="progFill" style="width:0%"></div>
-      </div>
-      <span class="progress-label" id="progPct">0%</span>
-    </div>
-
-    <!-- win -->
-    <div class="win-overlay" id="winOverlay">
-      <div class="win-icon">🎉</div>
-      <div class="win-title">挑战完成！</div>
-      <div class="win-sub">所有圆盘已从 A 柱移至 C 柱</div>
-      <div class="win-stats-row">
-        <div class="win-stat">
-          <div class="win-stat-val" id="winSteps">0</div>
-          <div class="win-stat-lbl">实际步数</div>
-        </div>
-        <div class="win-stat">
-          <div class="win-stat-val" id="winMin">0</div>
-          <div class="win-stat-lbl">最优步数</div>
-        </div>
-        <div class="win-stat">
-          <div class="win-stat-val" id="winExtra">0</div>
-          <div class="win-stat-lbl">多走步数</div>
-        </div>
-      </div>
-      <button class="btn-win" id="winRestartBtn">再来一局</button>
-    </div>
-  </div>
-
-  <!-- sidebar -->
-  <div id="sidebar">
-    <div>
-      <div class="sec-label">设置</div>
-      <div class="field">
-        <label>圆盘数量</label>
-        <select id="diskCount"><option value="2">2 个（最少 3 步）</option><option value="3">3 个（最少 7 步）</option><option value="4">4 个（最少 15 步）</option><option value="5">5 个（最少 31 步）</option><option value="6">6 个（最少 63 步）</option><option value="7">7 个（最少 127 步）</option><option value="8">8 个（最少 255 步）</option><option value="9">9 个（最少 511 步）</option><option value="10">10 个（最少 1,023 步）</option><option value="11">11 个（最少 2,047 步）</option><option value="12">12 个（最少 4,095 步）</option><option value="13">13 个（最少 8,191 步）</option><option value="14">14 个（最少 16,383 步）</option><option value="15">15 个（最少 32,767 步）</option><option value="16">16 个（最少 65,535 步）</option><option value="17">17 个（最少 131,071 步）</option><option value="18">18 个（最少 262,143 步）</option><option value="19">19 个（最少 524,287 步）</option><option value="20">20 个（最少 1,048,575 步）</option><option value="21">21 个（最少 2,097,151 步）</option><option value="22">22 个（最少 4,194,303 步）</option><option value="23">23 个（最少 8,388,607 步）</option><option value="24">24 个（最少 16,777,215 步）</option><option value="25">25 个（最少 33,554,431 步）</option><option value="26">26 个（最少 67,108,863 步）</option><option value="27">27 个（最少 134,217,727 步）</option><option value="28">28 个（最少 268,435,455 步）</option><option value="29">29 个（最少 536,870,911 步）</option><option value="30">30 个（最少 1,073,741,823 步）</option></select>
-      </div>
-      <div class="field">
-        <label>速度（毫秒）</label>
-        <div class="speed-row">
-          <span>50ms</span>
-          <input type="range" id="speedSlider" min="50" max="1000" step="50" value="500">
-          <span>1000ms</span>
-          <span class="speed-val" id="speedVal">500ms</span>
-        </div>
-      </div>
-      <div class="field">
-        <label>模式</label>
-        <div class="mode-tabs">
-          <div class="mode-tab active" data-mode="manual">手动</div>
-          <div class="mode-tab" data-mode="auto">自动</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="divider"></div>
-
-    <div>
-      <div class="sec-label">状态</div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-val purple" id="statSteps">0</div>
-          <div class="stat-lbl">总步数</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="statMin">127</div>
-          <div class="stat-lbl">最少步数</div>
-        </div>
-      </div>
-    </div>
-
-    <div id="hintSection">
-      <div class="hint-box" id="hintBox">点击顶部圆盘选中，再点击目标柱放置</div>
-      <button class="btn btn-hint" id="hintBtn" style="margin-top:8px">获取提示</button>
-      <button class="btn btn-reset" id="resetBtn" style="margin-top:6px">重置</button>
-    </div>
-
-    <div style="flex:1;display:flex;flex-direction:column;min-height:0">
-      <div class="sec-label">操作记录</div>
-      <div class="log-area" id="logArea"><div style="font-size:11px;color:#c0c4d6;padding:4px 6px">暂无操作</div></div>
-    </div>
-  </div>
-
-</div>
-
-<div id="drag-ghost"></div>
-
-<script>
-// disk color palette — bright & cheerful like the reference UI
-const PALETTE = [
-  '#4ecdc4','#45b7d1','#96ceb4','#ffeaa7',
-  '#fd79a8','#a29bfe','#fdcb6e','#00cec9',
-  '#e17055','#6c5ce7'
-];
-function diskBg(size){ return PALETTE[(size-1) % PALETTE.length]; }
-function diskFg(){ return '#fff'; }
-
-// populate disk count select
-(function(){
-  const sel=document.getElementById('diskCount');
-  for(let i=2;i<=30;i++){
-    const opt=document.createElement('option');
-    opt.value=i;
-    opt.textContent=i+' 个（最少 '+(Math.pow(2,i)-1).toLocaleString()+' 步）';
-    if(i===7) opt.selected=true;
-    sel.appendChild(opt);
-  }
-})();
-
-let N=7, mode='manual';
-let towers={A:[],B:[],C:[]};
-let steps=0, gameActive=false, selectedPeg=null;
-let autoRunning=false, autoQueue=[], autoTimer=null;
-let logEntries=[];
-
-function minSteps(n){ return Math.pow(2,n)-1; }
-
-function diskWidthPct(size){
-  // returns % of disks-wrap width
-  const minP=28, maxP=88;
-  return minP + (size-1)*(maxP-minP)/Math.max(N-1,1);
-}
-
-// ── Drag state ──────────────────────────────────────────────
-// Two-phase: pointerdown arms a "pending drag", pointermove activates it
-// only after moving >5px so a simple click still reaches the peg-zone handler.
-let dragSrcPeg=null, dragSize=null, isDragging=false;
-let pendingDrag=null; // {peg, diskEl, startX, startY}
-const ghost=document.getElementById('drag-ghost');
-const DRAG_THRESHOLD=5;
-
-function activateDrag(){
-  if(!pendingDrag||isDragging) return;
-  const {peg,diskEl,startX,startY}=pendingDrag;
-  if(!gameActive||mode!=='manual'||autoRunning) return;
-  if(!towers[peg].length) return;
-  const size=towers[peg][towers[peg].length-1];
-  dragSrcPeg=peg; dragSize=size; isDragging=true;
-  selectedPeg=null;
-  ghost.textContent=size;
-  // use the actual rendered pixel width of the disk element
-  const realW=diskEl.getBoundingClientRect().width;
-  ghost.style.width=realW+'px';
-  ghost.style.minWidth='40px';
-  ghost.style.background=diskBg(size);
-  ghost.style.display='flex';
-  moveGhost(startX,startY);
-  render();
-}
-
-function moveGhost(x,y){
-  ghost.style.left=x+'px';
-  ghost.style.top=y+'px';
-}
-
-function cancelDrag(){
-  pendingDrag=null;
-  if(!isDragging) return;
-  isDragging=false;
-  ghost.style.display='none';
-  dragSrcPeg=null; dragSize=null;
-  ['A','B','C'].forEach(p=>document.getElementById('peg-'+p).classList.remove('drag-over'));
-  render();
-}
-
-function endDrag(toPeg){
-  ghost.style.display='none';
-  const wasDragging=isDragging;
-  isDragging=false;
-  pendingDrag=null;
-  ['A','B','C'].forEach(p=>document.getElementById('peg-'+p).classList.remove('drag-over'));
-  if(wasDragging && toPeg && toPeg!==dragSrcPeg){
-    const ok=tryMove(dragSrcPeg,toPeg);
-    if(ok) setHint('移动成功！','ok');
-  }
-  dragSrcPeg=null; dragSize=null;
-  render();
-}
-
-document.addEventListener('pointermove',e=>{
-  if(pendingDrag && !isDragging){
-    const dx=e.clientX-pendingDrag.startX, dy=e.clientY-pendingDrag.startY;
-    if(Math.sqrt(dx*dx+dy*dy)>DRAG_THRESHOLD) activateDrag();
-  }
-  if(!isDragging) return;
-  moveGhost(e.clientX,e.clientY);
-  ['A','B','C'].forEach(p=>{
-    const z=document.getElementById('peg-'+p);
-    const r=z.getBoundingClientRect();
-    const over=e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
-    z.classList.toggle('drag-over', over && p!==dragSrcPeg);
-  });
-});
-document.addEventListener('pointerup',e=>{
-  if(isDragging){
-    let toPeg=null;
-    ['A','B','C'].forEach(p=>{
-      const r=document.getElementById('peg-'+p).getBoundingClientRect();
-      if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom) toPeg=p;
-    });
-    endDrag(toPeg);
-  } else {
-    // was just a tap/click — clear pending, let the click event on peg-zone fire normally
-    pendingDrag=null;
-  }
-});
-document.addEventListener('pointercancel',()=>cancelDrag());
-
-// ── Render ───────────────────────────────────────────────────
-function render(){
-  ['A','B','C'].forEach(p=>{
-    const wrap = document.getElementById('disks-'+p);
-    wrap.innerHTML='';
-    towers[p].forEach((size,i)=>{
-      const isTop = i===towers[p].length-1;
-      const d = document.createElement('div');
-      d.className='disk'+(isTop&&gameActive&&mode==='manual'?' is-top':'');
-      if(isTop && selectedPeg===p) d.classList.add('lifted');
-      if(isTop && isDragging && dragSrcPeg===p) d.classList.add('dragging');
-      d.style.width = diskWidthPct(size)+'%';
-      d.style.background = diskBg(size);
-      d.style.color = diskFg();
-      d.textContent = size;
-      // arm drag on pointerdown — do NOT stopPropagation so peg-zone click still fires
-      if(isTop && gameActive && mode==='manual'){
-        d.addEventListener('pointerdown',e=>{
-          e.preventDefault(); // prevent text selection / scroll
-          pendingDrag={peg:p, diskEl:d, startX:e.clientX, startY:e.clientY};
-        });
-      }
-      wrap.appendChild(d);
-    });
-    const zone = document.getElementById('peg-'+p);
-    zone.className='peg-zone';
-    if(gameActive && mode==='manual' && selectedPeg && selectedPeg!==p)
-      zone.classList.add('selected-hint');
-  });
-
-  const s=steps, mn=gameActive?minSteps(N):0;
-  document.getElementById('statSteps').textContent=s;
-  document.getElementById('statMin').textContent=gameActive?mn:'—';
-  document.getElementById('hdrSteps').textContent='步数：'+s;
-  document.getElementById('hdrMin').textContent=gameActive?'最少：'+mn:'最少：—';
-  if(gameActive&&mode==='auto'){
-    const pct=mn>0?Math.min(100,Math.round(s/mn*100)):0;
-    document.getElementById('progFill').style.width=pct+'%';
-    document.getElementById('progLabel').textContent=s+' / '+mn;
-    document.getElementById('progPct').textContent=pct+'%';
-  }
-}
-
-function addLog(from,to,disk){
-  logEntries.unshift({n:steps,from,to,disk});
-  const area=document.getElementById('logArea');
-  if(logEntries.length===1) area.innerHTML='';
-  const row=document.createElement('div');
-  row.className='log-row';
-  row.innerHTML=`<span class="log-num">${steps}</span>
-    <span class="log-chip" style="background:${diskBg(disk)}">${disk}</span>
-    <span class="log-txt"><b>${from}</b> → <b>${to}</b></span>`;
-  area.prepend(row);
-}
-
-function doMove(from,to,skipLog){
-  const disk=towers[from].pop();
-  towers[to].push(disk);
-  steps++;
-  if(!skipLog) addLog(from,to,disk);
-  render();
-  if(towers.C.length===N) handleWin();
-}
-
-function tryMove(from,to){
-  if(!gameActive||!from||!to||from===to) return false;
-  if(!towers[from].length){ setHint('该柱没有圆盘','err'); return false; }
-  const top=towers[from][towers[from].length-1];
-  if(towers[to].length&&towers[to][towers[to].length-1]<top){
-    setHint('不能将大盘放在小盘上！','err'); return false;
-  }
-  doMove(from,to);
-  return true;
-}
-
-function handleClick(peg){
-  if(!gameActive||mode!=='manual'||autoRunning) return;
-  if(selectedPeg===null){
-    if(!towers[peg].length){ setHint('该柱没有圆盘','err'); return; }
-    selectedPeg=peg;
-    setHint('已选中圆盘 '+towers[peg][towers[peg].length-1]+'，点击目标柱放置');
-    render();
-  } else {
-    const from=selectedPeg; selectedPeg=null;
-    if(!tryMove(from,peg)) render();
-    else setHint('移动成功！','ok');
-  }
-}
-
-// click handler
-['A','B','C'].forEach(p=>{
-  document.getElementById('peg-'+p).addEventListener('click',e=>{
-    if(isDragging) return; // drag just completed, ignore
-    handleClick(p);
-  });
-});
-
-function setHint(msg,type){
-  const b=document.getElementById('hintBox');
-  b.textContent=msg;
-  b.className='hint-box'+(type?' '+type:'');
-}
-
-function handleWin(){
-  gameActive=false; autoRunning=false;
-  if(autoTimer) clearTimeout(autoTimer);
-  const mn=minSteps(N);
-  document.getElementById('winSteps').textContent=steps;
-  document.getElementById('winMin').textContent=mn;
-  document.getElementById('winExtra').textContent=steps-mn;
-  document.getElementById('winOverlay').classList.add('show');
-  if(typeof window.SendMessageToU3d==='function') window.SendMessageToU3d('PageLoaded');
-}
-
-function initGame(){
-  towers={A:[],B:[],C:[]};
-  for(let i=N;i>=1;i--) towers.A.push(i);
-  steps=0; selectedPeg=null; autoRunning=false; autoQueue=[];
-  logEntries=[];
-  if(autoTimer) clearTimeout(autoTimer);
-  document.getElementById('logArea').innerHTML='<div style="font-size:11px;color:#c0c4d6;padding:4px 6px">暂无操作</div>';
-  document.getElementById('winOverlay').classList.remove('show');
-  document.getElementById('hintBtn').disabled=false;
-  document.getElementById('resetBtn').disabled=false;
-  document.getElementById('progressRow').style.display=mode==='auto'?'flex':'none';
-  if(mode==='auto'){ document.getElementById('progFill').style.width='0%'; }
-  setHint(mode==='manual'?'点击顶部圆盘选中，再点击目标柱放置':'自动模式已开始，观察移动过程');
-  gameActive=true;
-  render();
-}
-
-document.getElementById('resetBtn').addEventListener('click',()=>{
-  N=parseInt(document.getElementById('diskCount').value);
-  initGame();
-  if(mode==='auto') startAuto();
-});
-
-document.getElementById('winRestartBtn').addEventListener('click',()=>{
-  document.getElementById('winOverlay').classList.remove('show');
-  N=parseInt(document.getElementById('diskCount').value);
-  initGame();
-  if(mode==='auto') startAuto();
-});
-
-document.querySelectorAll('.mode-tab').forEach(tab=>{
-  tab.addEventListener('click',()=>{
-    document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
-    tab.classList.add('active');
-    mode=tab.dataset.mode;
-    document.getElementById('hintSection').style.display=mode==='manual'?'block':'none';
-    initGame();
-    if(mode==='auto') startAuto();
-  });
-});
-
-document.getElementById('diskCount').addEventListener('change',()=>{
-  N=parseInt(document.getElementById('diskCount').value);
-  initGame();
-});
-
-document.getElementById('speedSlider').addEventListener('input',function(){
-  document.getElementById('speedVal').textContent=this.value+'ms';
-});
-
-function buildAutoQueue(n,from,to,via,q){
-  if(n===0) return;
-  buildAutoQueue(n-1,from,via,to,q);
-  q.push([from,to]);
-  buildAutoQueue(n-1,via,to,from,q);
-}
-
-function startAuto(){
-  autoQueue=[];
-  buildAutoQueue(N,'A','C','B',autoQueue);
-  autoRunning=true;
-  runNextAuto();
-}
-
-function runNextAuto(){
-  if(!autoRunning||!autoQueue.length){autoRunning=false;return;}
-  const [f,t]=autoQueue.shift();
-  doMove(f,t);
-  if(towers.C.length===N) return;
-  autoTimer=setTimeout(runNextAuto,parseInt(document.getElementById('speedSlider').value));
-}
-
-// BFS optimal hint — works regardless of current state
-function getOptimalHint(){
-  const state={A:[...towers.A],B:[...towers.B],C:[...towers.C]};
-  const key=s=>s.A.join(',')+'/'+s.B.join(',')+'/'+s.C.join(',');
-  const pegs=['A','B','C'];
-  const queue=[{state,first:null}];
-  const visited=new Set([key(state)]);
-  while(queue.length){
-    const {state:cur,first}=queue.shift();
-    if(cur.C.length===N) return first;
-    for(const from of pegs){
-      if(!cur[from].length) continue;
-      const top=cur[from][cur[from].length-1];
-      for(const to of pegs){
-        if(from===to) continue;
-        if(cur[to].length&&cur[to][cur[to].length-1]<top) continue;
-        const ns={A:[...cur.A],B:[...cur.B],C:[...cur.C]};
-        ns[to].push(ns[from].pop());
-        const k=key(ns);
-        if(!visited.has(k)){
-          visited.add(k);
-          queue.push({state:ns,first:first||[from,to]});
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>汉诺塔</title>
+    <!-- ============================================================
+         客户端桥接 —— 必须在 <head> 内联，确保比客户端注入的桥接调用更早就位。
+         详见 开发日志.md。
+         ============================================================ -->
+    <script>
+      window.SendMessageToJs = function () {};
+      var __setIframeUrlHandled = false;
+      window.SetIframeUrl = function (url) {
+        if (__setIframeUrlHandled) return;
+        __setIframeUrlHandled = true;
+        window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
+        window.OnIframeLoad && window.OnIframeLoad();
+        if (url && url !== location.href) {
+          location.href = url;
         }
-      }
-    }
-  }
-  return null;
-}
+      };
+      window.ShowClose = function () {};
+      window.HideClose = function () {};
+    </script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page" data-screen-label="02 Hanoi Practice">
+      <!-- ============= TOP BAR ============= -->
+      <header class="topbar">
+        <div class="tabgroup">
+          <button class="topbar-tab is-active" type="button">
+            <span class="topbar-pill">模拟</span>
+            <span class="topbar-tab-title">把所有圆盘从 A 柱搬到 C 柱</span>
+          </button>
+          <button class="topbar-tab" type="button" id="hintsTab" aria-haspopup="dialog">
+            <span class="topbar-tab-title">提示</span>
+            <span class="topbar-badge">?</span>
+          </button>
+        </div>
 
-document.getElementById('hintBtn').addEventListener('click',()=>{
-  if(!gameActive) return;
-  const hint=getOptimalHint();
-  if(!hint){setHint('已完成！',  'ok');return;}
-  const [from,to]=hint;
-  const disk=towers[from][towers[from].length-1];
-  setHint('将圆盘 '+disk+' 从 '+from+' 柱 → '+to+' 柱','tip');
-});
+        <button class="iconbtn" type="button" id="soundToggle" aria-pressed="true" aria-label="声音开关">
+          <svg class="sound-icon-svg sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+            <path d="M16 8.5a4 4 0 0 1 0 7" />
+            <path d="M18.5 6a7 7 0 0 1 0 12" />
+          </svg>
+          <svg class="sound-icon-svg sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none;">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+            <line x1="16" y1="9" x2="22" y2="15" />
+            <line x1="22" y1="9" x2="16" y2="15" />
+          </svg>
+        </button>
 
-// 页面加载时直接初始化，不需要点击开始游戏
-N = parseInt(document.getElementById('diskCount').value);
-initGame();
+        <div class="topbar-spacer"></div>
 
-// 通知端上页面加载完成
-if(typeof window.SendMessageToU3d==='function') window.SendMessageToU3d('PageLoaded');
-</script>
+        <div class="topbar-divider"></div>
 
+        <button class="btn btn-ghost" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 11 21 3l-7 18-3-8-8-2z" />
+          </svg>
+          提交
+        </button>
+      </header>
 
-</body></html>
+      <!-- ============= MAIN ============= -->
+      <main class="split">
+        <section class="playground" aria-label="交互操作区">
+          <div class="playground-tabs">
+            <div class="ed-tab is-active">
+              <span class="ed-dot"></span>
+              模拟演示
+            </div>
+          </div>
+
+          <div class="playground-body">
+            <!-- LEFT COLUMN: 目标 + 规则 + 步数统计 + 操作记录 -->
+            <div class="record">
+              <div class="goals-rules">
+                <div class="gr-section gr-goal">
+                  <span class="gr-label">目标</span>
+                  <p>将 <strong id="goalN">3</strong> 个圆盘从 <em>A</em> 柱移到 <em>C</em> 柱</p>
+                </div>
+                <div class="gr-section gr-rules">
+                  <span class="gr-label">规则</span>
+                  <ol>
+                    <li>每次只能移动一个盘子</li>
+                    <li>大盘不能放在小盘上面</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-val purple" id="statSteps">0</div>
+                  <div class="stat-lbl">当前步数</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-val" id="statMin">7</div>
+                  <div class="stat-lbl">最少步数</div>
+                </div>
+              </div>
+
+              <div class="record-head">
+                <h3>操作记录</h3>
+                <span class="record-hint" id="recordHint">暂无操作</span>
+              </div>
+              <div class="log-area" id="logArea">
+                <div class="log-empty">点击或拖动顶层圆盘开始</div>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: STAGE + ACTION BAR -->
+            <div class="play-main">
+              <div class="stage-scene" id="stageScene">
+                <div class="sky-decor" aria-hidden="true">
+                  <span class="cloud cloud-a"></span>
+                  <span class="cloud cloud-b"></span>
+                  <span class="sun"></span>
+                </div>
+
+                <div class="speech" id="speechBubble" aria-live="polite">点击顶部圆盘选中，再点击目标柱放置</div>
+
+                <!-- 三根柱子 -->
+                <div class="towers-row" id="towersRow">
+                  <div class="tower-col">
+                    <div class="peg-zone" data-peg="A" id="peg-A">
+                      <div class="peg-rod"></div>
+                      <div class="peg-base"></div>
+                      <div class="disks-wrap" id="disks-A"></div>
+                    </div>
+                    <div class="peg-label">A</div>
+                  </div>
+                  <div class="tower-col">
+                    <div class="peg-zone" data-peg="B" id="peg-B">
+                      <div class="peg-rod"></div>
+                      <div class="peg-base"></div>
+                      <div class="disks-wrap" id="disks-B"></div>
+                    </div>
+                    <div class="peg-label">B</div>
+                  </div>
+                  <div class="tower-col">
+                    <div class="peg-zone" data-peg="C" id="peg-C">
+                      <div class="peg-rod"></div>
+                      <div class="peg-base"></div>
+                      <div class="disks-wrap" id="disks-C"></div>
+                    </div>
+                    <div class="peg-label">C</div>
+                  </div>
+                </div>
+
+                <!-- 飞行盘子（动画占位） -->
+                <div class="flying-disk" id="flyingDisk" aria-hidden="true"></div>
+
+                <!-- 关卡 chip（顶部左侧；完成上一关后下一关自动解锁） -->
+                <div class="level-chips" id="levelButtons" aria-label="关卡选择"></div>
+
+                <!-- WIN OVERLAY -->
+                <div class="win-overlay" id="winOverlay">
+                  <div class="win-icon">🎉</div>
+                  <div class="win-title">挑战完成！</div>
+                  <div class="win-sub" id="winSub">所有圆盘已从 A 柱搬到 C 柱</div>
+                  <div class="win-stats-row">
+                    <div class="win-stat">
+                      <div class="win-stat-val" id="winSteps">0</div>
+                      <div class="win-stat-lbl">实际步数</div>
+                    </div>
+                    <div class="win-stat">
+                      <div class="win-stat-val" id="winMin">0</div>
+                      <div class="win-stat-lbl">最少步数</div>
+                    </div>
+                    <div class="win-stat">
+                      <div class="win-stat-val" id="winExtra">0</div>
+                      <div class="win-stat-lbl">多走步数</div>
+                    </div>
+                  </div>
+                  <div class="win-actions">
+                    <button class="btn btn-ghost win-restart" type="button" id="winRestartBtn">重玩本关</button>
+                    <button class="btn btn-primary win-next" type="button" id="winNextBtn">下一关</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ACTION BAR：左侧关卡指示器 + 右侧重置 -->
+              <div class="action-bar">
+                <div class="action-status" id="actionStatus">完成本关后，下一关会自动解锁</div>
+                <button class="reset-btn-lg action-button" type="button" id="resetBtn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="3 4 3 10 9 10" />
+                    <path d="M3.5 14a8 8 0 1 0 2-7.5L3 10" />
+                  </svg>
+                  重置本关
+                </button>
+              </div>
+            </div><!-- /.play-main -->
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- 拖动用的"幽灵盘子"（position:fixed，跟随光标） -->
+    <div id="dragGhost" aria-hidden="true"></div>
+
+    <!-- HINTS DIALOG (解题提示：递归三段策略) -->
+    <dialog id="hintsDialog" class="hints-dialog" aria-label="解题提示">
+      <header class="hints-head">
+        <h2>解题提示</h2>
+        <button class="hints-close" id="hintsClose" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
+        </button>
+      </header>
+      <ol class="hints-steps">
+        <!-- ① 把上面 n-1 个从 A 移到 B -->
+        <li class="hints-step">
+          <div class="hints-illust" aria-hidden="true">
+            <svg viewBox="0 0 96 64" width="96" height="64">
+              <!-- 3 根柱子 -->
+              <rect x="4"  y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="13" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="36" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="45" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="68" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="77" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <!-- A 上完整堆叠（最大盘在底） -->
+              <rect x="6"  y="50" width="18" height="5" rx="2" fill="#ff654f" />
+              <rect x="8"  y="44" width="14" height="5" rx="2" fill="#ff9d2e" />
+              <rect x="10" y="38" width="10" height="5" rx="2" fill="#ffd24a" />
+              <!-- 顶部 n-1 个被高亮（虚线框） -->
+              <rect x="6" y="37" width="18" height="14" fill="none" stroke="#1f6dec" stroke-width="1.5" stroke-dasharray="2 2" rx="3" />
+              <!-- 箭头 A 顶 → B 顶 -->
+              <path d="M15 28 Q31 8 47 28" stroke="#1f6dec" stroke-width="2" stroke-dasharray="3 3" fill="none" stroke-linecap="round" />
+              <polygon points="47,28 41,30 44,22" fill="#1f6dec" />
+              <!-- 柱子标签 -->
+              <text x="15" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">A</text>
+              <text x="47" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">B</text>
+              <text x="79" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">C</text>
+            </svg>
+          </div>
+          <div class="hints-text">
+            <h3>① 先把上面 <strong class="hint-n1">2</strong> 个圆盘从 A 移到 B</h3>
+            <p>把 <em>A</em> 柱顶部的 <em class="hint-n1">2</em> 个小圆盘借助 <em>C</em> 柱挪到 <em>B</em> 柱，给最大那个让出位置。</p>
+          </div>
+        </li>
+
+        <!-- ② 把最大的从 A 移到 C -->
+        <li class="hints-step">
+          <div class="hints-illust" aria-hidden="true">
+            <svg viewBox="0 0 96 64" width="96" height="64">
+              <rect x="4"  y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="13" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="36" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="45" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="68" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="77" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <!-- A: 仅剩最大盘 -->
+              <rect x="6"  y="50" width="18" height="5" rx="2" fill="#ff654f" />
+              <!-- B: 上 n-1 个 -->
+              <rect x="38" y="50" width="14" height="5" rx="2" fill="#ff9d2e" />
+              <rect x="40" y="44" width="10" height="5" rx="2" fill="#ffd24a" />
+              <!-- A 的最大盘高亮 -->
+              <rect x="5" y="49" width="20" height="7" fill="none" stroke="#1f6dec" stroke-width="1.5" stroke-dasharray="2 2" rx="3" />
+              <!-- 箭头 A 底 → C 顶（大圆弧） -->
+              <path d="M15 44 Q47 6 79 44" stroke="#1f6dec" stroke-width="2" stroke-dasharray="3 3" fill="none" stroke-linecap="round" />
+              <polygon points="79,44 73,46 76,38" fill="#1f6dec" />
+              <text x="15" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">A</text>
+              <text x="47" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">B</text>
+              <text x="79" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">C</text>
+            </svg>
+          </div>
+          <div class="hints-text">
+            <h3>② 把最大的那个圆盘从 A 移到 C</h3>
+            <p>这一步只搬 <em>1</em> 个 —— 把 <em>A</em> 柱上孤零零的最大盘直接放到 <em>C</em> 柱底。</p>
+          </div>
+        </li>
+
+        <!-- ③ 再把 B 上的 n-1 个从 B 移到 C -->
+        <li class="hints-step">
+          <div class="hints-illust" aria-hidden="true">
+            <svg viewBox="0 0 96 64" width="96" height="64">
+              <rect x="4"  y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="13" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="36" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="45" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <rect x="68" y="56" width="22" height="4" fill="#cdd6e0" />
+              <rect x="77" y="22" width="4"  height="34" fill="#cdd6e0" />
+              <!-- A: 空 -->
+              <!-- B: 上 n-1 个 -->
+              <rect x="38" y="50" width="14" height="5" rx="2" fill="#ff9d2e" />
+              <rect x="40" y="44" width="10" height="5" rx="2" fill="#ffd24a" />
+              <!-- C: 最大盘 -->
+              <rect x="70" y="50" width="18" height="5" rx="2" fill="#ff654f" />
+              <!-- B 顶 n-1 高亮 -->
+              <rect x="37" y="43" width="16" height="13" fill="none" stroke="#1f6dec" stroke-width="1.5" stroke-dasharray="2 2" rx="3" />
+              <!-- 箭头 B → C 顶 -->
+              <path d="M47 34 Q63 14 79 36" stroke="#1f6dec" stroke-width="2" stroke-dasharray="3 3" fill="none" stroke-linecap="round" />
+              <polygon points="79,36 73,38 76,30" fill="#1f6dec" />
+              <text x="15" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">A</text>
+              <text x="47" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">B</text>
+              <text x="79" y="63" fill="#2c4866" font-size="7" font-weight="700" text-anchor="middle">C</text>
+            </svg>
+          </div>
+          <div class="hints-text">
+            <h3>③ 再把 B 上的 <strong class="hint-n1">2</strong> 个圆盘从 B 移到 C</h3>
+            <p>借助 <em>A</em> 柱，把刚才放到 <em>B</em> 的 <em class="hint-n1">2</em> 个小圆盘搬到 <em>C</em> 柱顶 —— 全部就位！</p>
+          </div>
+        </li>
+      </ol>
+      <div class="hints-actions">
+        <button class="btn btn-primary" id="hintsOk" type="button">我知道啦</button>
+      </div>
+    </dialog>
+
+    <!-- legacy hidden hooks（兼容旧 app.js 里的 query，避免空指针） -->
+    <div hidden aria-hidden="true">
+      <span id="missionText"></span>
+      <span id="traceLog"></span>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
