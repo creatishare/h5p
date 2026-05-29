@@ -410,8 +410,11 @@ function bindEvents() {
 
   // 提示弹窗
   if (els.hintsTab && els.hintsDialog) {
+    // ⚠ 不要用可选链 e?.preventDefault?.() —— 客户端 WebView 是 CEF 74
+    //   (Chromium 74)，不支持可选链语法(Chrome 80+)，一旦出现会让整个
+    //   app.js 解析失败 → 全页 JS 不执行(表格/台阶/关卡/按钮全部失灵)。
     const openHints = (e) => {
-      e?.preventDefault?.();
+      if (e && e.preventDefault) e.preventDefault();
       if (!els.hintsDialog.open) els.hintsDialog.showModal();
     };
     const closeHints = () => els.hintsDialog.close();
