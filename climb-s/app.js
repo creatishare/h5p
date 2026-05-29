@@ -143,20 +143,17 @@ const els = {
   hintsOk: document.querySelector("#hintsOk"),
 };
 
-// 小核桃跳跃素材：tiao_00 是站姿（idle），tiao_02..tiao_14 是跳跃 13 帧（无 tiao_01）
-// ⚠ 路径必须是 ASCII —— 客户端 WebView / 部分服务器对中文 URL 编解码不一致，
-//   会导致 setHeroSrc 里的 `getAttribute("src") !== src` 比较异常，第二次跳跃换不了帧。
-const HERO_BASE = "./hero-frames/";
-const HERO_IDLE = HERO_BASE + "tiao_00.png";
-// ⚠ 关键：跳跃数组**不含** tiao_00（idle）。
-//   含进去会让 t=0 的瞬间显示"站立不动"的姿势，与已经开始抬起的位置脱节。
-//   13 帧均匀铺到 t∈[0,1]：起跳 → 腾空 → 落地，与位置阶段一一对应。
-const HERO_JUMP_FRAMES = [
-  "tiao_02.png", "tiao_03.png", "tiao_04.png",
-  "tiao_05.png", "tiao_06.png", "tiao_07.png", "tiao_08.png",
-  "tiao_09.png", "tiao_10.png", "tiao_11.png", "tiao_12.png",
-  "tiao_13.png", "tiao_14.png",
-].map((f) => HERO_BASE + f);
+// 小核桃跳跃素材：现在打包成 1 张 sprite sheet（hero-sprite.webp / .png），
+// 横向 8 帧 —— frame 0 = idle（原 tiao_00），frame 1..7 = 跳跃 7 帧
+// （从原 13 帧中等距取 tiao_02/04/06/08/10/12/14，视觉差几乎看不出）。
+//
+// 改造前：14 张独立 PNG，每次跳跃 setAttribute('src')，需要 __heroFrameCache
+//        持有引用 + decode() 强制解码，否则生产服务器（无 Cache-Control）会逐帧 304。
+// 改造后：1 张 sprite 一次性加载，背景图天然由 WebView 渲染层持有，无需手动缓存。
+//        换帧 = 改 CSS var --hero-frame（0..7），不再触发任何网络请求/重新解码。
+// 内存：14 × 152 × 272 × 4 ≈ 2.27 MB  →  1 × 1216 × 272 × 4 ≈ 1.32 MB，约 -42%。
+const HERO_IDLE_FRAME = 0;
+const HERO_JUMP_FRAME_COUNT = 7;
 
 // 与 styles.css `.hero { --hero-jump-dur }` 严格一致；改这里也要改 CSS。
 // 数值偏慢一点是给学生留观察时间（参考姿态 / 看清落到哪一级台阶）。
@@ -166,11 +163,9 @@ const LANDING_PAUSE = 500;
 
 let heroJumpRaf = null;
 
-function setHeroSrc(src) {
+function setHeroFrame(idx) {
   if (!els.heroImg) return;
-  if (els.heroImg.getAttribute("src") !== src) {
-    els.heroImg.setAttribute("src", src);
-  }
+  els.heroImg.style.setProperty("--hero-frame", String(idx));
 }
 
 function stopJumpAnim() {
@@ -195,7 +190,6 @@ function jumpTo(x1, y1, x2, y2) {
   els.hero.classList.add("no-transition");
   void els.hero.offsetHeight; // commit class
 
-  const frames = HERO_JUMP_FRAMES;
   const total = HERO_JUMP_DURATION;
   const start = performance.now();
 
@@ -203,8 +197,8 @@ function jumpTo(x1, y1, x2, y2) {
   const dy = Math.abs(y2 - y1);
   const arcPeak = 56 + dy * 0.55;
 
-  // 起跳第一帧立刻显示 tiao_02（蓄力姿），不要再展示 idle 站姿
-  setHeroSrc(frames[0]);
+  // 起跳第一帧立刻显示蓄力姿（sprite idx 1），不要再展示 idle 站姿
+  setHeroFrame(1);
 
   const frame = (now) => {
     const elapsed = now - start;
@@ -219,12 +213,15 @@ function jumpTo(x1, y1, x2, y2) {
     els.hero.style.setProperty("--hero-x", `${x}px`);
     els.hero.style.setProperty("--hero-y", `${yLine + arc}px`);
 
-    // 2) 序列帧：13 帧均匀铺到 t∈[0,1]
-    //    - t=0     → idx 0 (tiao_02, 蓄力)
-    //    - t=0.5   → idx 6 (tiao_08, 腾空 / 接近抛物线峰值)
-    //    - t→1     → idx 12 (tiao_14, 落地姿) —— 恰好与位置落到 y2 同时
-    const idx = Math.min(frames.length - 1, Math.floor(t * frames.length));
-    setHeroSrc(frames[idx]);
+    // 2) 序列帧：7 帧均匀铺到 t∈[0,1]，映射到 sprite idx 1..7
+    //    - t=0     → idx 1 (蓄力)
+    //    - t=0.5   → idx 4 (腾空 / 接近抛物线峰值)
+    //    - t→1     → idx 7 (落地姿) —— 恰好与位置落到 y2 同时
+    const jumpIdx = Math.min(
+      HERO_JUMP_FRAME_COUNT - 1,
+      Math.floor(t * HERO_JUMP_FRAME_COUNT)
+    );
+    setHeroFrame(jumpIdx + 1); // +1 跳过 idle 帧
 
     if (t < 1) {
       heroJumpRaf = requestAnimationFrame(frame);
@@ -233,30 +230,11 @@ function jumpTo(x1, y1, x2, y2) {
       heroJumpRaf = null;
       els.hero.style.setProperty("--hero-x", `${x2}px`);
       els.hero.style.setProperty("--hero-y", `${y2}px`);
-      setHeroSrc(HERO_IDLE);
+      setHeroFrame(HERO_IDLE_FRAME);
       requestAnimationFrame(() => els.hero.classList.remove("no-transition"));
     }
   };
   heroJumpRaf = requestAnimationFrame(frame);
-}
-
-// 预加载所有帧，避免播放时还在拉资源造成卡顿。
-// ⚠ 必须把 Image 对象的引用挂在模块作用域里，否则浏览器在 forEach 结束后会回收它们。
-//   生产服务器（47.85.84.164:8088）不设 Cache-Control / Expires，只发 ETag —— 没有
-//   in-memory 引用的话，第二次跳跃时每帧都要重新发请求 / 走 304，16ms 一帧的 RAF 节奏
-//   下根本来不及，新 src 会在旧 src 还没解码完就被覆盖，结果：位置在动，但 <img> 一直
-//   卡在第一次落地时的 tiao_00。decode() 进一步强制浏览器把帧解码进 in-memory image
-//   cache，后续 setAttribute 命中即用。
-const __heroFrameCache = [];
-function preloadHeroFrames() {
-  [HERO_IDLE, ...HERO_JUMP_FRAMES].forEach((src) => {
-    const img = new Image();
-    img.src = src;
-    if (typeof img.decode === "function") {
-      img.decode().catch(() => {});
-    }
-    __heroFrameCache.push(img);
-  });
 }
 
 function safeSetText(el, text) {
@@ -264,7 +242,8 @@ function safeSetText(el, text) {
 }
 
 function init() {
-  preloadHeroFrames();
+  // sprite sheet 由 CSS background-image 自动加载并由渲染层持有缓存，
+  // 不再需要手动 new Image() + decode() 防 304（详见 setHeroFrame 上方注释）。
   renderLevels();
   renderRecords();
   renderLesson();
@@ -572,7 +551,7 @@ function placeHero(position, level, instant = false) {
     void els.hero.offsetHeight;
     els.hero.style.setProperty("--hero-x", `${target.x}px`);
     els.hero.style.setProperty("--hero-y", `${target.y}px`);
-    setHeroSrc(HERO_IDLE);
+    setHeroFrame(HERO_IDLE_FRAME);
     requestAnimationFrame(() => els.hero.classList.remove("no-transition"));
   } else {
     // 跳跃：从当前像素位置弧线跳到目标位置
