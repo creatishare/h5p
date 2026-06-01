@@ -440,7 +440,8 @@ h1, h2, h3, p { margin: 0; }
   background: linear-gradient(180deg, #c8e9ff 0%, #d8eeff 55%, #eaf6ff 100%);
 }
 
-.sky-decor { position: absolute; inset: 0; pointer-events: none; }
+/* CEF 74 不支持 inset 简写（需 Chrome 87）；拆成四个长属性 */
+.sky-decor { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .cloud {
   position: absolute;
   background: white;
@@ -513,7 +514,9 @@ h1, h2, h3, p { margin: 0; }
   bottom: var(--hero-y, 42px);
   width: 86px;     /* 从 62 → 86，画面更显小核桃 */
   height: 122px;   /* 从 88 → 122 */
-  /* 跳跃时整个 transform / left / bottom 都改由 JS RAF 驱动（同一时钟），
+  /* 落点用 left/bottom 定位；跳跃的位移+抛物线交给 transform 关键帧动画
+     （见 @keyframes hero-jump）。关键：transform/opacity 动画走合成器线程，
+     即使主线程被客户端的重显循环挤占也能继续推进，不像 rAF 那样被饿死。
      这里的 transition 只用于 resize 等"非跳跃"的兜底场景。 */
   transition: left 220ms ease, bottom 220ms ease, opacity 220ms ease;
   z-index: 5;
@@ -522,6 +525,25 @@ h1, h2, h3, p { margin: 0; }
 }
 .hero.no-transition { transition: none; }
 .hero.hidden { opacity: 0; }
+
+/* ─── 跳跃：合成器驱动的抛物线位移（抗 OSR 掉帧）───
+   动态量由 JS 在起跳前写入：
+     --jdx  横向净位移(px，向右为正)
+     --jdy  纵向净位移(px，屏幕向下为正；跳上更高台阶时为负)
+     --arc  抛物线峰值高度(px，正值=向上抬升)
+   5 个关键帧用线性插值逼近抛物线：峰值在 50% 处(因子 4t(1-t)=1)，
+   25%/75% 处因子 0.75。calc(length*number ± length*number) 在 Chrome 74 可用。
+   fill: forwards 让落地姿停在终点，由 JS 在 animationend/兜底定时器里原子收尾。 */
+@keyframes hero-jump {
+  0%   { transform: translate(0px, 0px); }
+  25%  { transform: translate(calc(var(--jdx) * 0.25), calc(var(--jdy) * 0.25 - var(--arc) * 0.75)); }
+  50%  { transform: translate(calc(var(--jdx) * 0.5),  calc(var(--jdy) * 0.5  - var(--arc))); }
+  75%  { transform: translate(calc(var(--jdx) * 0.75), calc(var(--jdy) * 0.75 - var(--arc) * 0.75)); }
+  100% { transform: translate(var(--jdx), var(--jdy)); }
+}
+.hero.jumping {
+  animation: hero-jump var(--hero-jump-dur) linear forwards;
+}
 
 /* 序列帧改用 sprite sheet：1 张 1216x272 的 WebP（8 帧横向铺开），
    通过切 background-position 来换帧。比 14 张独立 PNG 省内存 ~45%，
@@ -534,7 +556,16 @@ h1, h2, h3, p { margin: 0; }
   display: block;
   width: 100%;
   height: 100%;
-  background-image: url("./hero-sprite.png"); /* 兜底：老 WebView 不支持 image-set */
+  /* 三级回退：
+     1) 纯 url(png) —— 终极兜底，任何内核都能显示
+     2) -webkit-image-set —— CEF 74(Chromium 74) 只认带前缀的写法，webp 在端内也能生效（省内存）
+     3) 无前缀 image-set + type() —— 现代浏览器（Chrome 113+）走标准语法
+     CEF 74 会丢弃第 3 条、采用第 2 条 → 端内拿到 webp；旧内核若连前缀也不认则回落第 1 条。 */
+  background-image: url("./hero-sprite.png");
+  background-image: -webkit-image-set(
+    url("./hero-sprite.webp") 1x,
+    url("./hero-sprite.png") 1x
+  );
   background-image: image-set(
     url("./hero-sprite.webp") type("image/webp"),
     url("./hero-sprite.png") type("image/png")
@@ -567,7 +598,9 @@ h1, h2, h3, p { margin: 0; }
   left: 50%;
   bottom: 40px;
   transform: translateX(-50%);
-  width: min(58%, 500px);
+  /* CEF 74 不支持 CSS min()（需 Chrome 79）；拆成 width + max-width 等价且全内核可用 */
+  width: 58%;
+  max-width: 500px;
   height: 220px;
   display: flex;
   align-items: flex-end;
@@ -946,7 +979,9 @@ dialog.hints-dialog {
   border: 0;
   border-radius: 16px;
   padding: 0;
-  width: min(560px, calc(100vw - 40px));
+  /* CEF 74 不支持 min()；width + max-width 等价（calc 在 Chrome 26+ 即可用） */
+  width: 560px;
+  max-width: calc(100vw - 40px);
   max-height: 86vh;
   font-family: inherit;
   color: var(--ink);
@@ -1129,4 +1164,37 @@ dialog.hints-dialog::backdrop { background: rgba(22, 32, 51, 0.4); }
   .contribution { top: 56px; padding: 10px 14px 12px; gap: 5px; max-width: 190px; }
   .contribution-path { font-size: 13.5px; }
   .contribution-value { font-size: 19px; }
+}
+
+/* ============================================================
+   CEF 74 兼容层
+   ------------------------------------------------------------
+   客户端 WebView 是 Chromium 74（离屏渲染）。其中 flex 容器的 gap
+   要到 Chrome 84 才支持，74 下会被直接忽略 → 各元素间距塌成 0。
+   现代浏览器里 gap 一切正常，所以上面的 gap 全部保留不动，
+   这里只为「旧内核」补 margin 兜底。
+
+   探针：CEF 74 不支持 inset 简写（Chrome 87），而支持 flex gap 的
+   浏览器（Chrome 84+）几乎都支持 inset，因此 `@supports not (inset:0)`
+   可近似等价于「没有 flex gap 的旧内核」——现代浏览器不会进入此块，
+   不会出现 gap + margin 双倍间距。
+   说明：grid 的 gap 自 Chrome 57 起就支持，无需兜底（.action-bar /
+   .hints-step / .page / .split 等 grid 容器不在此列）。
+   ============================================================ */
+@supports not (inset: 0) {
+  /* —— 横向 flex：给除首个外的子元素补 margin-left —— */
+  .topbar > * + * { margin-left: 8px; }
+  .topbar-tab > * + * { margin-left: 10px; }
+  .btn > * + * { margin-left: 6px; }
+  .playground-tabs > * + * { margin-left: 18px; }
+  .ed-tab > * + * { margin-left: 8px; }
+  .pg-meta > * + * { margin-left: 10px; }
+  .level-chips > * + * { margin-left: 6px; }
+  .contribution-path-line > * + * { margin-left: 6px; }
+  .reset-btn-lg > * + * { margin-left: 8px; }
+  .record-head > * + * { margin-left: 8px; }
+  .dialog-actions > * + * { margin-left: 10px; }
+  /* —— 纵向 flex（flex-direction: column）：补 margin-top —— */
+  .contribution > * + * { margin-top: 6px; }
+  .hints-illust-buttons > * + * { margin-top: 6px; }
 }

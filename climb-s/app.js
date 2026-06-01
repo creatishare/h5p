@@ -161,80 +161,102 @@ const HERO_JUMP_DURATION = 1400;
 // 每次落地后强制留出的"站定"时间：让学生看清现在站在哪一级，再进入下一次跳跃 / 重置 / 隐藏。
 const LANDING_PAUSE = 500;
 
-let heroJumpRaf = null;
+// 序列帧推进用的定时器句柄 + 落地兜底定时器 + animationend 监听器引用，
+// 都要可取消，避免上一跳的回调污染下一跳。
+let heroSpriteTimers = [];
+let heroLandTimer = null;
+let heroJumpEndHandler = null;
 
 function setHeroFrame(idx) {
   if (!els.heroImg) return;
   els.heroImg.style.setProperty("--hero-frame", String(idx));
 }
 
-function stopJumpAnim() {
-  if (heroJumpRaf) {
-    cancelAnimationFrame(heroJumpRaf);
-    heroJumpRaf = null;
+function clearJumpTimers() {
+  for (let i = 0; i < heroSpriteTimers.length; i++) {
+    clearTimeout(heroSpriteTimers[i]);
   }
-  if (els.hero) {
-    els.hero.classList.remove("jumping");      // 兼容旧 class（已废弃但留个清理）
+  heroSpriteTimers = [];
+  if (heroLandTimer) {
+    clearTimeout(heroLandTimer);
+    heroLandTimer = null;
   }
 }
 
-// ─── 真正的"跳起来"动画：x / y / 抛物线 / sprite 都从同一个 RAF 时钟推进 ───
-// 关键约束：位移、弧线、帧序列共享 elapsed 与 t，永远不会脱节。
-// - 序列帧 13 帧均匀铺到 t∈[0,1]，最后一帧（tiao_14, 落地姿）恰好在 t=1 显示
-// - t=1 时位置 = (x2, y2)，sprite 立即切回 idle —— 视觉上"落地 → 站定"一气呵成
+function stopJumpAnim() {
+  clearJumpTimers();
+  if (els.hero) {
+    if (heroJumpEndHandler) {
+      els.hero.removeEventListener("animationend", heroJumpEndHandler);
+      heroJumpEndHandler = null;
+    }
+    els.hero.classList.remove("jumping"); // 移除动画
+    els.hero.style.transform = "";        // 回到无位移基态
+  }
+}
+
+// ─── "跳起来"动画：位移+抛物线交给 CSS @keyframes（合成器线程），序列帧用 setTimeout 链 ───
+// 为什么不再用 requestAnimationFrame：客户端是 CEF 74 离屏渲染(OSR)，rAF 的节奏绑死在
+// 宿主 BeginFrame 上，且需要主线程每帧执行 JS。客户端那个每 0.3~0.6s 一次的 H5 重显循环
+// 会挤占主线程 → rAF 回调被饿死 → 跳跃卡顿、半路冻在台阶上。改用：
+//   • 位移/抛物线 = transform 关键帧动画 → 合成器推进，主线程再忙也能继续插值；
+//   • 序列帧 = setTimeout 链（离散换帧，最多略滞后，绝不冻结位置）；
+//   • 落地 = animationend 收尾 + setTimeout 兜底，双保险确保一定落地、绝不卡死。
 function jumpTo(x1, y1, x2, y2) {
   if (!els.heroImg || !els.hero) return;
   stopJumpAnim();
 
-  // 跳跃过程不让 CSS transition 插手 —— 完全由 JS 写 --hero-x / --hero-y
-  els.hero.classList.add("no-transition");
-  void els.hero.offsetHeight; // commit class
-
-  const total = HERO_JUMP_DURATION;
-  const start = performance.now();
-
   // 抛物线峰值高度：随跨度增加而稍微变高，保证小核桃总是清晰地"越过"目标
-  const dy = Math.abs(y2 - y1);
-  const arcPeak = 56 + dy * 0.55;
+  const dyAbs = Math.abs(y2 - y1);
+  const arcPeak = 56 + dyAbs * 0.55;
 
-  // 起跳第一帧立刻显示蓄力姿（sprite idx 1），不要再展示 idle 站姿
+  // 1) 基准位置固定在起点 (x1,y1)，位移全部由 transform 关键帧负责。
+  //    注：屏幕坐标向下为正，而 --hero-y 用的是 bottom，越大越靠上，
+  //    所以"纵向净位移(屏幕向下为正)" = y1 - y2。
+  els.hero.classList.add("no-transition");
+  els.hero.style.setProperty("--hero-x", `${x1}px`);
+  els.hero.style.setProperty("--hero-y", `${y1}px`);
+  els.hero.style.setProperty("--jdx", `${x2 - x1}px`);
+  els.hero.style.setProperty("--jdy", `${y1 - y2}px`);
+  els.hero.style.setProperty("--arc", `${arcPeak}px`);
+  els.hero.style.transform = "translate(0px, 0px)";
+
+  // 起跳蓄力帧
   setHeroFrame(1);
 
-  const frame = (now) => {
-    const elapsed = now - start;
-    const t = Math.min(1, elapsed / total);
-
-    // 1) 位移：水平线性，垂直 = 线性 + 抛物线弧
-    const x = x1 + (x2 - x1) * t;
-    const yLine = y1 + (y2 - y1) * t;
-    // 4t(1-t) 是经典抛物线：t=0 / t=1 都为 0，t=0.5 处取峰值 1
-    const arc = arcPeak * 4 * t * (1 - t);
-
-    els.hero.style.setProperty("--hero-x", `${x}px`);
-    els.hero.style.setProperty("--hero-y", `${yLine + arc}px`);
-
-    // 2) 序列帧：7 帧均匀铺到 t∈[0,1]，映射到 sprite idx 1..7
-    //    - t=0     → idx 1 (蓄力)
-    //    - t=0.5   → idx 4 (腾空 / 接近抛物线峰值)
-    //    - t→1     → idx 7 (落地姿) —— 恰好与位置落到 y2 同时
-    const jumpIdx = Math.min(
-      HERO_JUMP_FRAME_COUNT - 1,
-      Math.floor(t * HERO_JUMP_FRAME_COUNT)
+  // 2) 序列帧：1..7 等距铺到时长上（用 setTimeout，不依赖 rAF）
+  const step = HERO_JUMP_DURATION / HERO_JUMP_FRAME_COUNT;
+  for (let i = 1; i < HERO_JUMP_FRAME_COUNT; i++) {
+    heroSpriteTimers.push(
+      setTimeout(function () { setHeroFrame(i + 1); }, Math.round(step * i))
     );
-    setHeroFrame(jumpIdx + 1); // +1 跳过 idle 帧
+  }
 
-    if (t < 1) {
-      heroJumpRaf = requestAnimationFrame(frame);
-    } else {
-      // 落地：锁定终点像素，下一帧回到 idle 姿，并解除 no-transition
-      heroJumpRaf = null;
-      els.hero.style.setProperty("--hero-x", `${x2}px`);
-      els.hero.style.setProperty("--hero-y", `${y2}px`);
-      setHeroFrame(HERO_IDLE_FRAME);
-      requestAnimationFrame(() => els.hero.classList.remove("no-transition"));
-    }
+  // 3) 原子落地：基准位置=终点、transform 归零、回到 idle 帧，一次重排完成无闪烁。
+  const finalize = function () {
+    stopJumpAnim(); // 同时摘掉 animationend 监听 + 清掉兜底定时器，保证只执行一次
+    els.hero.classList.add("no-transition");
+    els.hero.style.setProperty("--hero-x", `${x2}px`);
+    els.hero.style.setProperty("--hero-y", `${y2}px`);
+    els.hero.style.transform = "";
+    setHeroFrame(HERO_IDLE_FRAME);
+    setTimeout(function () { els.hero.classList.remove("no-transition"); }, 16);
   };
-  heroJumpRaf = requestAnimationFrame(frame);
+
+  // animationend 正常收尾
+  heroJumpEndHandler = function (e) {
+    if (e && e.animationName && e.animationName.indexOf("hero-jump") === -1) return;
+    finalize();
+  };
+  els.hero.addEventListener("animationend", heroJumpEndHandler);
+  // 兜底：万一 OSR 下 animationend 没按时回调，到点强制落地（不依赖 rAF）
+  heroLandTimer = setTimeout(finalize, HERO_JUMP_DURATION + 120);
+
+  // 4) 启动动画：同步强制重排提交 translate(0,0) 基态，再加 .jumping 触发关键帧。
+  //    全程不依赖 rAF —— 即使主线程被挤占，动画也会在下一个合成帧自动开跑。
+  els.hero.classList.remove("no-transition");
+  void els.hero.offsetHeight;
+  els.hero.classList.add("jumping");
 }
 
 function safeSetText(el, text) {
@@ -337,7 +359,8 @@ function renderLesson() {
     // 强制重排，让 no-transition 即刻生效；下一帧再恢复过渡，
     // 这样下次显示时仍然有动画。
     void els.contributionCard.offsetHeight;
-    requestAnimationFrame(() => els.contributionCard.classList.remove("no-transition"));
+    // CEF 74 OSR 下 rAF 可能被拖慢，改用 setTimeout 重新启用过渡（不依赖渲染帧）
+    setTimeout(() => els.contributionCard.classList.remove("no-transition"), 16);
   }
   safeSetText(els.speech, state.solved.has(n) ? lesson.completeTitle : lesson.prompt);
 
@@ -492,7 +515,7 @@ function applyContribution(trace, keepActive) {
     els.contributionCard.classList.add("active");
   } else {
     els.contributionCard.classList.remove("active");
-    requestAnimationFrame(() => els.contributionCard.classList.add("active"));
+    setTimeout(() => els.contributionCard.classList.add("active"), 16);
   }
 }
 
@@ -555,7 +578,7 @@ function placeHero(position, level, instant = false) {
     els.hero.style.setProperty("--hero-x", `${target.x}px`);
     els.hero.style.setProperty("--hero-y", `${target.y}px`);
     setHeroFrame(HERO_IDLE_FRAME);
-    requestAnimationFrame(() => els.hero.classList.remove("no-transition"));
+    setTimeout(() => els.hero.classList.remove("no-transition"), 16);
   } else {
     // 跳跃：从当前像素位置弧线跳到目标位置
     jumpTo(state._heroX, state._heroY, target.x, target.y);
