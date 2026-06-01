@@ -7,19 +7,19 @@
 //    重复赋值无副作用 —— 不要因此把这里删掉。
 // ============================================================
 window.SendMessageToJs = window.SendMessageToJs || function () {};
-// ⚠ 本次 page-lifecycle 只处理一次客户端的 SetIframeUrl 调用，避免
-//    SendMessageToU3d("PageLoaded") + OnIframeLoad() → native 反复 re-fire
-//    page-loaded → 再次 SetIframeUrl 的反馈环（见 index.html 中的解释）。
+// ⚠⚠ 绝对不要在 SetIframeUrl 里跳转（location.href / location.replace）！
+//    客户端每次 page-loaded 后都会调用 SetIframeUrl(同一个带 token 的本应用地址)，
+//    跳转会重载本页、丢掉 state（"一点按钮就回到 0"），并触发 native 反馈环
+//    （日志里同一 URL page-loaded 重复 3418 次）。本应用不使用 token，跳转无意义。
+//    只回传一次"已就绪"信号。详见 index.html <head> 内联脚本的完整说明。
 if (!window.SetIframeUrl) {
-  var __setIframeUrlHandled = false;
+  var __readySignaled = false;
   window.SetIframeUrl = function (url) {
-    if (__setIframeUrlHandled) return;
-    __setIframeUrlHandled = true;
+    if (__readySignaled) return;
+    __readySignaled = true;
     window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
     window.OnIframeLoad && window.OnIframeLoad();
-    if (url && url !== location.href) {
-      location.href = url;
-    }
+    // 故意不跳转。
   };
 }
 window.ShowClose = window.ShowClose || function () {};

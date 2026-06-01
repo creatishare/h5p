@@ -13,24 +13,23 @@
          ============================================================ -->
     <script>
       window.SendMessageToJs = function () {};
-      // ⚠ SetIframeUrl 必须做成"本次 page-lifecycle 只生效一次"的。
-      //   客户端日志（691 个 page-loaded 周期）显示一个反馈环：
-      //     1) native 触发 page-loaded
-      //     2) native 注入桥接 + 调 SetIframeUrl(token URL)
-      //     3) 我们的 SendMessageToU3d("PageLoaded") + OnIframeLoad()
-      //        在 native 端被解读为「H5 又加载了一次」
-      //     4) native 再次触发 page-loaded → 回到 1)
-      //   只让第一次调用把"已就绪"信号送出去，第二次起直接 no-op，
-      //   外加 url !== location.href 兜底，循环就被截断。
-      var __setIframeUrlHandled = false;
+      // ⚠⚠ 绝对不要在这里做 location.href = url / location.replace(url) 跳转！
+      //   客户端在每次 page-loaded 后都会调用 SetIframeUrl(同一个带 token 的本应用地址)。
+      //   一旦跳转，就会：① 重新加载本页、丢掉所有 state（表现为"一点按钮就回到 0"）；
+      //   ② 触发 native 的反馈环 —— 日志里同一 URL `page loaded` 重复了 3418 次、
+      //      SetIframeUrl 6836 次，页面每秒重载约 3 次，永不停止。
+      //   之前用 `url !== location.href` 做兜底无效：客户端传的 url 末尾无 `/`，
+      //   而浏览器 location.href 会补成 `.../?iframe=0&token=...`，两者永远不相等 → 死循环。
+      //
+      //   本应用（climb-s）根本不使用 token，跳转毫无意义。这里只需把"H5 已就绪"
+      //   信号回传给 native，绝不跳转。每页只回传一次，避免刷屏（重载时该标志自然重置）。
+      var __readySignaled = false;
       window.SetIframeUrl = function (url) {
-        if (__setIframeUrlHandled) return;
-        __setIframeUrlHandled = true;
+        if (__readySignaled) return;
+        __readySignaled = true;
         window.SendMessageToU3d && window.SendMessageToU3d("PageLoaded");
         window.OnIframeLoad && window.OnIframeLoad();
-        if (url && url !== location.href) {
-          location.href = url;
-        }
+        // 故意不跳转：见上方注释。
       };
       window.ShowClose = function () {};
       window.HideClose = function () {};
