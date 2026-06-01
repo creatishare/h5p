@@ -739,6 +739,8 @@ h1, h2, h3, p { margin: 0; }
 .action-bar {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
+  /* Chrome 60 的 grid 不支持无前缀 gap（需 66）；grid-gap 别名在 57+ 与现代浏览器均可用 */
+  grid-gap: 16px;
   gap: 16px;
   padding: 20px 24px;
   border-top: 1px solid var(--line);
@@ -1028,6 +1030,8 @@ dialog.hints-dialog::backdrop { background: rgba(22, 32, 51, 0.4); }
 .hints-step {
   display: grid;
   grid-template-columns: 110px 1fr;
+  /* Chrome 60 grid 需 grid-gap 别名（无前缀 gap 要 66） */
+  grid-gap: 18px;
   gap: 18px;
   align-items: center;
   padding: 16px 0;
@@ -1139,7 +1143,7 @@ dialog.hints-dialog::backdrop { background: rgba(22, 32, 51, 0.4); }
 }
 
 @media (max-width: 540px) {
-  .hints-step { grid-template-columns: 84px 1fr; gap: 12px; }
+  .hints-step { grid-template-columns: 84px 1fr; grid-gap: 12px; gap: 12px; }
   .hints-illust { width: 84px; height: 68px; }
   .hints-head h2 { font-size: 17px; }
 }
