@@ -539,8 +539,8 @@ function computeHeroXY(position) {
   if (!scene) return null;
   const sceneRect = scene.getBoundingClientRect();
   // 小核桃 PNG 底部有少量透明像素；把整张图整体上抬，让视觉脚底贴在面上。
-  // hero 元素现在 122px 高，FOOT_LIFT 同比放大。
-  const FOOT_LIFT = 11;
+  // hero 元素现在 164px 高，FOOT_LIFT 同比放大。
+  const FOOT_LIFT = 15;
   let x = 48;
   let y = 38 + FOOT_LIFT;
   if (position === 0) {

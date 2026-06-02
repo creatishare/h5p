@@ -512,8 +512,8 @@ h1, h2, h3, p { margin: 0; }
   position: absolute;
   left: var(--hero-x, 48px);
   bottom: var(--hero-y, 42px);
-  width: 86px;     /* 从 62 → 86，画面更显小核桃 */
-  height: 122px;   /* 从 88 → 122 */
+  width: 116px;    /* 放大：62 → 86 → 116，配合加大后的台阶 */
+  height: 164px;   /* 88 → 122 → 164 */
   /* 落点用 left/bottom 定位；跳跃的位移+抛物线交给 transform 关键帧动画
      （见 @keyframes hero-jump）。关键：transform/opacity 动画走合成器线程，
      即使主线程被客户端的重显循环挤占也能继续推进，不像 rAF 那样被饿死。
@@ -584,8 +584,8 @@ h1, h2, h3, p { margin: 0; }
   left: 50%;
   bottom: -6px;
   transform: translateX(-50%);
-  width: 60px;
-  height: 9px;
+  width: 80px;
+  height: 11px;
   border-radius: 50%;
   background: rgba(22, 32, 51, 0.22);
   filter: blur(2px);
@@ -599,9 +599,9 @@ h1, h2, h3, p { margin: 0; }
   bottom: 40px;
   transform: translateX(-50%);
   /* CEF 74 不支持 CSS min()（需 Chrome 79）；拆成 width + max-width 等价且全内核可用 */
-  width: 58%;
-  max-width: 500px;
-  height: 220px;
+  width: 66%;
+  max-width: 620px;
+  height: 400px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -609,29 +609,29 @@ h1, h2, h3, p { margin: 0; }
 }
 .stair {
   flex: 0 0 24%;
-  min-width: 64px;
+  min-width: 88px;
   display: flex; align-items: flex-start; justify-content: center;
-  color: white; font-weight: 900; font-size: 24px;
-  padding-top: 12px;
-  border-radius: 6px 6px 0 0;
+  color: white; font-weight: 900; font-size: 34px;
+  padding-top: 16px;
+  border-radius: 8px 8px 0 0;
   border: 2px solid rgba(20, 37, 60, 0.12);
-  box-shadow: inset 0 -10px 14px rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 -12px 16px rgba(0, 0, 0, 0.08);
   position: relative;
   font-family: "Times New Roman", "Cambria", serif;
 }
 .stair::after {
   content: attr(data-ground);
   position: absolute;
-  bottom: -22px;
+  bottom: -24px;
   color: #2c4866;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   font-family: "PingFang SC", sans-serif;
 }
-.stair-1 { height: 54px;  background: #27bca1; }
-.stair-2 { height: 96px;  background: #ffd24a; color: #875a00; }
-.stair-3 { height: 138px; background: #ff9d2e; }
-.stair-4 { height: 180px; background: #ff654f; }
+.stair-1 { height: 104px; background: #27bca1; }
+.stair-2 { height: 188px; background: #ffd24a; color: #875a00; }
+.stair-3 { height: 272px; background: #ff9d2e; }
+.stair-4 { height: 356px; background: #ff654f; }
 
 /* level chips top-left of scene */
 .level-chips {
@@ -835,12 +835,12 @@ body.is-animating .btn {
   flex-wrap: wrap;
 }
 .record-head h3 {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--ink);
 }
 .record-hint {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -856,17 +856,17 @@ body.is-animating .btn {
   table-layout: fixed;
 }
 .record th, .record td {
-  height: 42px;
+  height: 48px;
   padding: 0 4px;
   text-align: center;
-  font-size: 16px;
+  font-size: 18px;
   border-bottom: 1px solid var(--line);
   border-right: 1px solid var(--line);
   font-family: "Times New Roman", "Cambria", serif;
 }
 .record th {
-  height: 36px;
-  font-size: 14.5px;
+  height: 40px;
+  font-size: 16px;
   font-weight: 600;
   background: #f8fbff;
   color: var(--ink-soft);
@@ -880,11 +880,11 @@ body.is-animating .btn {
 .status-chip {
   display: inline-grid;
   place-items: center;
-  min-width: 54px;
-  height: 25px;
-  padding: 0 9px;
+  min-width: 62px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   font-family: "PingFang SC", sans-serif;
 }
